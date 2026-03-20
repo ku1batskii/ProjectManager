@@ -15,5 +15,9 @@ export default function TaskBoardPage() {
     setTasks(saved);
   }, []);
 
-  return <TaskBoard tasks={tasks} setTasks={setTasks} />;
+  return (
+    <div style={{ height: "100svh" }}>
+      <TaskBoard tasks={tasks} setTasks={setTasks} />
+    </div>
+  );
 }
