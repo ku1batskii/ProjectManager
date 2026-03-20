@@ -84,14 +84,17 @@ export async function POST(request) {
     });
 
     const data = await response.json();
-    const raw = data.content?.[0]?.text || "{}";
+    const raw = (data.content?.[0]?.text || "{}").trim()
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
 
     // Parse JSON response
     let parsed;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // Fallback if model didn't return valid JSON
       parsed = { text: raw, tasks, suggestions: [] };
     }
 
