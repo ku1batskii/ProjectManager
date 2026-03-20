@@ -1,14 +1,11 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-
-/* ---------------- CONFIG ---------------- */
+import Link from "next/link";
 
 const STORAGE_KEY = "pm_chat";
 const TASKS_KEY = "pm_tasks";
 const MAX_CONTEXT = 20;
-
-/* ---------------- HELPERS ---------------- */
 
 const safeParse = (v, fallback) => {
   try { return JSON.parse(v); } catch { return fallback; }
@@ -20,41 +17,83 @@ const createMsg = (role, content) => ({
   content,
 });
 
-/* ---------------- MAIN ---------------- */
+const Avatar = React.memo(() => (
+  <div style={{
+    width: 34, height: 34, borderRadius: "50%",
+    background: "#161622", border: "2px solid #334155",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 13, fontWeight: 700, color: "#94A3B8",
+    flexShrink: 0, fontFamily: "Georgia, serif",
+  }}>A</div>
+));
+
+const Dots = () => (
+  <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "2px 0" }}>
+    {[0, 1, 2].map((i) => (
+      <div key={i} style={{
+        width: 6, height: 6, borderRadius: "50%", background: "#475569",
+        animation: `tdot 1.4s ${i * 0.2}s ease-in-out infinite`,
+      }} />
+    ))}
+  </div>
+);
+
+const formatText = (text) =>
+  text.split("\n").map((line, i) => {
+    if (line === "") return <div key={i} style={{ height: 6 }} />;
+    const parts = line.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
+      p.startsWith("**") && p.endsWith("**")
+        ? <strong key={j}>{p.slice(2, -2)}</strong>
+        : p
+    );
+    return <span key={i} style={{ display: "block" }}>{parts}</span>;
+  });
 
 export default function PMAgent() {
   const [messages, setMessages] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
-  const [suggestions, setSuggestions] = useState([]);
+  const [newTasksCount, setNewTasksCount] = useState(0);
 
-  const taRef = useRef(null);
   const bottomRef = useRef(null);
+  const taRef = useRef(null);
   const controllerRef = useRef(null);
   const requestIdRef = useRef(0);
-
-  /* ---------------- INIT ---------------- */
 
   useEffect(() => {
     const savedMessages = safeParse(localStorage.getItem(STORAGE_KEY), []);
     const savedTasks = safeParse(localStorage.getItem(TASKS_KEY), []);
 
-    if (savedMessages.length) setMessages(savedMessages);
+    if (savedMessages.length) {
+      setMessages(savedMessages);
+      setLoading(false);
+    } else {
+      // First visit — get greeting
+      fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "start" }],
+          tasks: [],
+        }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          const initial = [createMsg("assistant", data.text)];
+          setMessages(initial);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
+          setSuggestions(data.suggestions || []);
+        })
+        .catch(() => {
+          setMessages([createMsg("assistant", "Привет. Я Эдуард — Senior PM. Над чем работаешь?")]);
+        })
+        .finally(() => setLoading(false));
+    }
+
     if (savedTasks.length) setTasks(savedTasks);
-
-    setLoading(false);
   }, []);
-
-  /* ---------------- SAVE ---------------- */
-
-  const saveMessages = (m) =>
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(m.slice(-50)));
-
-  const saveTasks = (t) =>
-    localStorage.setItem(TASKS_KEY, JSON.stringify(t));
-
-  /* ---------------- SCROLL ---------------- */
 
   useEffect(() => {
     requestAnimationFrame(() =>
@@ -62,17 +101,21 @@ export default function PMAgent() {
     );
   }, [messages, suggestions]);
 
-  /* ---------------- SEND ---------------- */
+  const saveMessages = (m) => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(m.slice(-50))); } catch {}
+  };
+
+  const saveTasks = (t) => {
+    try { localStorage.setItem(TASKS_KEY, JSON.stringify(t)); } catch {}
+  };
 
   const send = async (text) => {
-    const t = (text ?? input).trim();
+    const t = (text !== undefined ? text : input).trim();
     if (!t || loading) return;
 
     if (controllerRef.current) controllerRef.current.abort();
-
     const controller = new AbortController();
     controllerRef.current = controller;
-
     const requestId = ++requestIdRef.current;
 
     const userMsg = createMsg("user", t);
@@ -80,89 +123,222 @@ export default function PMAgent() {
 
     setMessages(history);
     saveMessages(history);
-
     setInput("");
+    if (taRef.current) taRef.current.style.height = "44px";
     setLoading(true);
     setSuggestions([]);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        body: JSON.stringify({
-          messages: history,
-          tasks,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history, tasks }),
+        signal: controller.signal,
       });
 
       const data = await res.json();
-
       if (requestId !== requestIdRef.current) return;
+      if (data.error) throw new Error(data.error);
 
       const updated = [...history, createMsg("assistant", data.text)];
-
       setMessages(updated);
       saveMessages(updated);
 
-      if (data.tasks) {
+      if (data.tasks && data.tasks.length > 0) {
+        const prevCount = tasks.length;
         setTasks(data.tasks);
         saveTasks(data.tasks);
+        const added = data.tasks.length - prevCount;
+        if (added > 0) setNewTasksCount(added);
+        setTimeout(() => setNewTasksCount(0), 3000);
       }
 
       setSuggestions(data.suggestions || []);
-    } catch {
-      setMessages([
-        ...history,
-        createMsg("assistant", "Ошибка. Попробуй снова."),
-      ]);
+    } catch (err) {
+      if (err.name === "AbortError") return;
+      setMessages([...history, createMsg("assistant", "Ошибка. Попробуй снова.")]);
     }
 
     setLoading(false);
   };
 
-  /* ---------------- UI ---------------- */
+  const handleKey = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  };
+
+  const handleInput = (e) => {
+    setInput(e.target.value);
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
+  };
 
   return (
-    <div style={{ height: "100svh", display: "flex", flexDirection: "column", background: "#0C0C14" }}>
-      
-      {/* HEADER */}
-      <div style={{ padding: 16, borderBottom: "1px solid #1E293B" }}>
-        Алекс · AI Project Manager
+    <div style={{
+      height: "100svh", background: "#0C0C14",
+      display: "flex", flexDirection: "column",
+      fontFamily: "'Sora', 'Segoe UI', sans-serif",
+      color: "#E2E8F0", maxWidth: 680, margin: "0 auto",
+    }}>
+      {/* Header */}
+      <div style={{
+        background: "#0E0E1A", borderBottom: "1px solid #1E293B",
+        padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
+      }}>
+        <div style={{ position: "relative" }}>
+          <Avatar />
+          <div style={{
+            position: "absolute", bottom: 1, right: 1,
+            width: 8, height: 8, borderRadius: "50%",
+            background: loading ? "#F59E0B" : "#22C55E",
+            border: "2px solid #0E0E1A", transition: "background 0.3s",
+          }} />
+        </div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.3 }}>Эдуард</div>
+          <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
+            {loading ? "печатает..." : "Senior PM · онлайн"}
+          </div>
+        </div>
+
+        {/* Nav */}
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          <Link href="/taskboard" style={{
+            textDecoration: "none",
+            background: "transparent",
+            border: "1px solid #1E293B",
+            color: "#64748B",
+            padding: "5px 12px",
+            borderRadius: 8,
+            fontSize: 11,
+            cursor: "pointer",
+            fontFamily: "inherit",
+            display: "flex", alignItems: "center", gap: 6,
+            position: "relative",
+          }}>
+            Task Board
+            {(tasks.length > 0 || newTasksCount > 0) && (
+              <span style={{
+                background: newTasksCount > 0 ? "#F59E0B" : "#334155",
+                color: newTasksCount > 0 ? "#0C0C14" : "#94A3B8",
+                borderRadius: 10, padding: "0px 5px",
+                fontSize: 9, fontWeight: 700,
+                transition: "all 0.3s",
+              }}>
+                {newTasksCount > 0 ? `+${newTasksCount}` : tasks.length}
+              </span>
+            )}
+          </Link>
+        </div>
       </div>
 
-      {/* MESSAGES */}
-      <div style={{ flex: 1, overflowY: "auto", padding: 16 }}>
-        {messages.map((m) => (
-          <div key={m.id} style={{ marginBottom: 10 }}>
-            <b>{m.role === "user" ? "Ты" : "Алекс"}:</b>
-            <div>{m.content}</div>
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
+        {messages.map((m) => {
+          const isUser = m.role === "user";
+          return (
+            <div key={m.id} style={{
+              display: "flex", flexDirection: isUser ? "row-reverse" : "row",
+              alignItems: "flex-end", gap: 8,
+            }}>
+              {!isUser && <Avatar />}
+              <div style={{
+                maxWidth: "80%",
+                background: isUser ? "linear-gradient(135deg, #1D4ED8, #1E40AF)" : "#161622",
+                border: isUser ? "none" : "1px solid #1E293B",
+                borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                padding: "11px 15px", fontSize: 14, lineHeight: 1.65,
+                color: isUser ? "#EFF6FF" : "#CBD5E1",
+                boxShadow: isUser ? "0 4px 20px #1D4ED820" : "none",
+              }}>
+                {isUser ? m.content : formatText(m.content)}
+              </div>
+            </div>
+          );
+        })}
+
+        {loading && (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+            <Avatar />
+            <div style={{
+              background: "#161622", border: "1px solid #1E293B",
+              borderRadius: "18px 18px 18px 4px", padding: "13px 18px",
+            }}>
+              <Dots />
+            </div>
           </div>
-        ))}
+        )}
 
-        {loading && <div>Алекс печатает...</div>}
-
-        {suggestions.map((s, i) => (
-          <button key={i} onClick={() => send(s)}>{s}</button>
-        ))}
+        {suggestions.length > 0 && !loading && (
+          <div style={{ paddingLeft: 42, display: "flex", flexDirection: "column", gap: 7, marginTop: 2 }}>
+            {suggestions.map((s, i) => (
+              <button key={i} onClick={() => send(s)} style={{
+                alignSelf: "flex-start", background: "transparent",
+                border: "1px solid #1E293B", color: "#64748B",
+                padding: "8px 15px", borderRadius: 20, fontSize: 13,
+                cursor: "pointer", fontFamily: "inherit",
+                textAlign: "left", transition: "all 0.15s", lineHeight: 1.4,
+              }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#334155"; e.currentTarget.style.color = "#94A3B8"; e.currentTarget.style.background = "#161622"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1E293B"; e.currentTarget.style.color = "#64748B"; e.currentTarget.style.background = "transparent"; }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div ref={bottomRef} />
       </div>
 
-      {/* INPUT */}
-      <div style={{ display: "flex", padding: 10, gap: 10 }}>
+      {/* Input */}
+      <div style={{
+        background: "#0E0E1A", borderTop: "1px solid #1E293B",
+        padding: "12px 16px 24px", display: "flex", alignItems: "flex-end", gap: 10,
+      }}>
         <textarea
           ref={taRef}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-          style={{ flex: 1, borderRadius: 999, padding: 10 }}
+          onChange={handleInput}
+          onKeyDown={handleKey}
+          placeholder="Напиши Эдуарду..."
+          disabled={loading}
+          style={{
+            flex: 1, background: "#161622", border: "1px solid #1E293B",
+            borderRadius: 22, padding: "11px 16px",
+            color: "#E2E8F0", fontSize: 14, fontFamily: "inherit",
+            outline: "none", resize: "none", lineHeight: 1.5,
+            height: 44, maxHeight: 140, overflow: "auto",
+            transition: "border-color 0.2s",
+          }}
+          onFocus={e => e.target.style.borderColor = "#334155"}
+          onBlur={e => e.target.style.borderColor = "#1E293B"}
         />
-
-        <button
-          onClick={() => send()}
-          style={{ width: 44, height: 44, borderRadius: "50%" }}
-        >
-          →
+        <button onClick={() => send()} disabled={loading || !input.trim()} style={{
+          width: 44, height: 44, borderRadius: "50%",
+          background: input.trim() && !loading ? "#1D4ED8" : "#161622",
+          border: "1px solid " + (input.trim() && !loading ? "#1D4ED8" : "#1E293B"),
+          cursor: input.trim() && !loading ? "pointer" : "default",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "all 0.2s", flexShrink: 0,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M5 12H19M19 12L12 5M19 12L12 19"
+              stroke={input.trim() && !loading ? "#fff" : "#334155"}
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </button>
       </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap');
+        @keyframes tdot { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
+        textarea::placeholder { color: #334155; }
+        a { color: inherit; }
+      `}</style>
     </div>
   );
 }
