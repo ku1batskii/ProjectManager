@@ -48,6 +48,19 @@ const Dots = () => (
   </div>
 );
 
+const cleanText = (text) => {
+  if (!text) return "";
+  const t = text.trim();
+  // If looks like JSON — extract text field
+  if (t.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(t);
+      return parsed.text || t;
+    } catch {}
+  }
+  return t;
+};
+
 const formatText = (text) => {
   if (!text) return null;
   return text.split("\n").map((line, i) => {
@@ -238,7 +251,7 @@ export default function PMAgent() {
                 padding: "11px 15px", fontSize: 14, lineHeight: 1.65,
                 color: isUser ? "#EFF6FF" : "#CBD5E1",
               }}>
-                {isUser ? m.content : formatText(m.content)}
+                {isUser ? m.content : formatText(cleanText(m.content))}
               </div>
             </div>
           );
