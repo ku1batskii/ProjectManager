@@ -5,27 +5,37 @@ import Link from "next/link";
 
 const STORAGE_KEY = "pm_chat";
 const TASKS_KEY = "pm_tasks";
-const MAX_CONTEXT = 20;
 
 const safeParse = (v, fallback) => {
-  try { return JSON.parse(v); } catch { return fallback; }
+  try { const r = JSON.parse(v); return r || fallback; } catch { return fallback; }
 };
 
+let msgCounter = 0;
 const createMsg = (role, content) => ({
-  id: crypto.randomUUID(),
+  id: `msg_${++msgCounter}_${Date.now()}`,
   role,
   content,
 });
 
-const Avatar = React.memo(() => (
+// Sanitize loaded messages — ensure they all have id
+const sanitizeMsgs = (msgs) => {
+  if (!Array.isArray(msgs)) return [];
+  return msgs.map((m, i) => ({
+    id: m.id || `old_${i}`,
+    role: m.role || "assistant",
+    content: typeof m.content === "string" ? m.content : "",
+  })).filter(m => m.content);
+};
+
+const Avatar = () => (
   <div style={{
     width: 34, height: 34, borderRadius: "50%",
     background: "#161622", border: "2px solid #334155",
     display: "flex", alignItems: "center", justifyContent: "center",
     fontSize: 13, fontWeight: 700, color: "#94A3B8",
     flexShrink: 0, fontFamily: "Georgia, serif",
-  }}>A</div>
-));
+  }}>E</div>
+);
 
 const Dots = () => (
   <div style={{ display: "flex", gap: 4, alignItems: "center", padding: "2px 0" }}>
@@ -38,8 +48,9 @@ const Dots = () => (
   </div>
 );
 
-const formatText = (text) =>
-  text.split("\n").map((line, i) => {
+const formatText = (text) => {
+  if (!text) return null;
+  return text.split("\n").map((line, i) => {
     if (line === "") return <div key={i} style={{ height: 6 }} />;
     const parts = line.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
       p.startsWith("**") && p.endsWith("**")
@@ -48,6 +59,7 @@ const formatText = (text) =>
     );
     return <span key={i} style={{ display: "block" }}>{parts}</span>;
   });
+};
 
 export default function PMAgent() {
   const [messages, setMessages] = useState([]);
@@ -55,50 +67,46 @@ export default function PMAgent() {
   const [suggestions, setSuggestions] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
-  const [newTasksCount, setNewTasksCount] = useState(0);
+  const [tasksBadge, setTasksBadge] = useState(0);
 
   const bottomRef = useRef(null);
   const taRef = useRef(null);
-  const controllerRef = useRef(null);
-  const requestIdRef = useRef(0);
 
   useEffect(() => {
-    const savedMessages = safeParse(localStorage.getItem(STORAGE_KEY), []);
+    const savedMsgs = sanitizeMsgs(safeParse(localStorage.getItem(STORAGE_KEY), []));
     const savedTasks = safeParse(localStorage.getItem(TASKS_KEY), []);
 
-    if (savedMessages.length) {
-      setMessages(savedMessages);
+    if (Array.isArray(savedTasks)) setTasks(savedTasks);
+
+    if (savedMsgs.length > 0) {
+      setMessages(savedMsgs);
       setLoading(false);
-    } else {
-      // First visit — get greeting
-      fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: "start" }],
-          tasks: [],
-        }),
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          const initial = [createMsg("assistant", data.text)];
-          setMessages(initial);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-          setSuggestions(data.suggestions || []);
-        })
-        .catch(() => {
-          setMessages([createMsg("assistant", "Привет. Я Эдуард — Senior PM. Над чем работаешь?")]);
-        })
-        .finally(() => setLoading(false));
+      return;
     }
 
-    if (savedTasks.length) setTasks(savedTasks);
+    // First visit
+    fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: [{ role: "user", content: "start" }], tasks: [] }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        const initial = [createMsg("assistant", data.text || "Привет. Над чем работаем сегодня?")];
+        setMessages(initial);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(initial)); } catch {}
+        setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+      })
+      .catch(() => {
+        setMessages([createMsg("assistant", "Привет. Я Эдуард — PM ассистент. Над чем работаем?")]);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
-    requestAnimationFrame(() =>
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" })
-    );
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    });
   }, [messages, suggestions]);
 
   const saveMessages = (m) => {
@@ -113,13 +121,8 @@ export default function PMAgent() {
     const t = (text !== undefined ? text : input).trim();
     if (!t || loading) return;
 
-    if (controllerRef.current) controllerRef.current.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    const requestId = ++requestIdRef.current;
-
     const userMsg = createMsg("user", t);
-    const history = [...messages, userMsg].slice(-MAX_CONTEXT);
+    const history = [...messages, userMsg].slice(-20);
 
     setMessages(history);
     saveMessages(history);
@@ -133,30 +136,28 @@ export default function PMAgent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, tasks }),
-        signal: controller.signal,
       });
-
       const data = await res.json();
-      if (requestId !== requestIdRef.current) return;
       if (data.error) throw new Error(data.error);
 
-      const updated = [...history, createMsg("assistant", data.text)];
+      const updated = [...history, createMsg("assistant", data.text || "...")];
       setMessages(updated);
       saveMessages(updated);
 
-      if (data.tasks && data.tasks.length > 0) {
-        const prevCount = tasks.length;
+      if (Array.isArray(data.tasks) && data.tasks.length > 0) {
+        const added = data.tasks.length - tasks.length;
         setTasks(data.tasks);
         saveTasks(data.tasks);
-        const added = data.tasks.length - prevCount;
-        if (added > 0) setNewTasksCount(added);
-        setTimeout(() => setNewTasksCount(0), 3000);
+        if (added > 0) {
+          setTasksBadge(added);
+          setTimeout(() => setTasksBadge(0), 3000);
+        }
       }
 
-      setSuggestions(data.suggestions || []);
-    } catch (err) {
-      if (err.name === "AbortError") return;
-      setMessages([...history, createMsg("assistant", "Ошибка. Попробуй снова.")]);
+      setSuggestions(Array.isArray(data.suggestions) ? data.suggestions.slice(0, 3) : []);
+    } catch {
+      const updated = [...history, createMsg("assistant", "Ошибка. Попробуй снова.")];
+      setMessages(updated);
     }
 
     setLoading(false);
@@ -190,41 +191,29 @@ export default function PMAgent() {
             position: "absolute", bottom: 1, right: 1,
             width: 8, height: 8, borderRadius: "50%",
             background: loading ? "#F59E0B" : "#22C55E",
-            border: "2px solid #0E0E1A", transition: "background 0.3s",
+            border: "2px solid #0E0E1A",
           }} />
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: -0.3 }}>Эдуард</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Эдуард</div>
           <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
-            {loading ? "печатает..." : "Senior PM · онлайн"}
+            {loading ? "печатает..." : "PM ассистент · онлайн"}
           </div>
         </div>
-
-        {/* Nav */}
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <Link href="/taskboard" style={{
-            textDecoration: "none",
-            background: "transparent",
-            border: "1px solid #1E293B",
-            color: "#64748B",
-            padding: "5px 12px",
-            borderRadius: 8,
-            fontSize: 11,
-            cursor: "pointer",
-            fontFamily: "inherit",
-            display: "flex", alignItems: "center", gap: 6,
-            position: "relative",
+            textDecoration: "none", border: "1px solid #1E293B",
+            color: "#64748B", padding: "5px 12px", borderRadius: 8,
+            fontSize: 11, display: "flex", alignItems: "center", gap: 6,
           }}>
-            Task Board
-            {(tasks.length > 0 || newTasksCount > 0) && (
+            Tasks
+            {tasks.length > 0 && (
               <span style={{
-                background: newTasksCount > 0 ? "#F59E0B" : "#334155",
-                color: newTasksCount > 0 ? "#0C0C14" : "#94A3B8",
-                borderRadius: 10, padding: "0px 5px",
-                fontSize: 9, fontWeight: 700,
-                transition: "all 0.3s",
+                background: tasksBadge > 0 ? "#F59E0B" : "#334155",
+                color: tasksBadge > 0 ? "#0C0C14" : "#94A3B8",
+                borderRadius: 10, padding: "0 5px", fontSize: 9, fontWeight: 700,
               }}>
-                {newTasksCount > 0 ? `+${newTasksCount}` : tasks.length}
+                {tasksBadge > 0 ? `+${tasksBadge}` : tasks.length}
               </span>
             )}
           </Link>
@@ -232,7 +221,7 @@ export default function PMAgent() {
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
         {messages.map((m) => {
           const isUser = m.role === "user";
           return (
@@ -248,7 +237,6 @@ export default function PMAgent() {
                 borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                 padding: "11px 15px", fontSize: 14, lineHeight: 1.65,
                 color: isUser ? "#EFF6FF" : "#CBD5E1",
-                boxShadow: isUser ? "0 4px 20px #1D4ED820" : "none",
               }}>
                 {isUser ? m.content : formatText(m.content)}
               </div>
@@ -259,10 +247,7 @@ export default function PMAgent() {
         {loading && (
           <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
             <Avatar />
-            <div style={{
-              background: "#161622", border: "1px solid #1E293B",
-              borderRadius: "18px 18px 18px 4px", padding: "13px 18px",
-            }}>
+            <div style={{ background: "#161622", border: "1px solid #1E293B", borderRadius: "18px 18px 18px 4px", padding: "13px 18px" }}>
               <Dots />
             </div>
           </div>
@@ -275,14 +260,11 @@ export default function PMAgent() {
                 alignSelf: "flex-start", background: "transparent",
                 border: "1px solid #1E293B", color: "#64748B",
                 padding: "8px 15px", borderRadius: 20, fontSize: 13,
-                cursor: "pointer", fontFamily: "inherit",
-                textAlign: "left", transition: "all 0.15s", lineHeight: 1.4,
+                cursor: "pointer", fontFamily: "inherit", textAlign: "left",
               }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#334155"; e.currentTarget.style.color = "#94A3B8"; e.currentTarget.style.background = "#161622"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1E293B"; e.currentTarget.style.color = "#64748B"; e.currentTarget.style.background = "transparent"; }}
-              >
-                {s}
-              </button>
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#334155"; e.currentTarget.style.color = "#94A3B8"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1E293B"; e.currentTarget.style.color = "#64748B"; }}
+              >{s}</button>
             ))}
           </div>
         )}
@@ -300,15 +282,13 @@ export default function PMAgent() {
           value={input}
           onChange={handleInput}
           onKeyDown={handleKey}
-          placeholder="Напиши Эдуарду..."
+          placeholder="Расскажи что происходит..."
           disabled={loading}
           style={{
             flex: 1, background: "#161622", border: "1px solid #1E293B",
-            borderRadius: 22, padding: "11px 16px",
-            color: "#E2E8F0", fontSize: 14, fontFamily: "inherit",
-            outline: "none", resize: "none", lineHeight: 1.5,
-            height: 44, maxHeight: 140, overflow: "auto",
-            transition: "border-color 0.2s",
+            borderRadius: 22, padding: "11px 16px", color: "#E2E8F0",
+            fontSize: 14, fontFamily: "inherit", outline: "none",
+            resize: "none", lineHeight: 1.5, height: 44, maxHeight: 140, overflow: "auto",
           }}
           onFocus={e => e.target.style.borderColor = "#334155"}
           onBlur={e => e.target.style.borderColor = "#1E293B"}
@@ -319,7 +299,7 @@ export default function PMAgent() {
           border: "1px solid " + (input.trim() && !loading ? "#1D4ED8" : "#1E293B"),
           cursor: input.trim() && !loading ? "pointer" : "default",
           display: "flex", alignItems: "center", justifyContent: "center",
-          transition: "all 0.2s", flexShrink: 0,
+          flexShrink: 0,
         }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M5 12H19M19 12L12 5M19 12L12 19"
@@ -334,7 +314,6 @@ export default function PMAgent() {
         @keyframes tdot { 0%,60%,100%{transform:translateY(0);opacity:.4} 30%{transform:translateY(-5px);opacity:1} }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
         textarea::placeholder { color: #334155; }
         a { color: inherit; }
