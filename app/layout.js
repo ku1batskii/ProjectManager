@@ -1,6 +1,6 @@
 export const metadata = {
   title: "PROJECT MANAGER",
-  description: "PM ассистент",
+  description: "PM AGENT",
 };
 
 export const viewport = {
