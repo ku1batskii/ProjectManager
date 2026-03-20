@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import TaskBoard from "../../components/TaskBoard";
+import TaskBoard from "@/components/TaskBoard";
 
 const safeParse = (v, fallback) => {
   try { return JSON.parse(v); } catch { return fallback; }
