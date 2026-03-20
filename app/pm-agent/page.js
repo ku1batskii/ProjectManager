@@ -175,7 +175,7 @@ export default function PMAgent() {
 
   return (
     <div style={{
-      height: "100dvh", background: "#0C0C14",
+      height: "100svh", background: "#0C0C14",
       display: "flex", flexDirection: "column",
       fontFamily: "'Sora', 'Segoe UI', sans-serif",
       color: "#E2E8F0", maxWidth: 680, margin: "0 auto",
