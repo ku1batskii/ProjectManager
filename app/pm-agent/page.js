@@ -51,10 +51,11 @@ const Dots = () => (
 const cleanText = (text) => {
   if (!text) return "";
   const t = text.trim();
-  // If looks like JSON — extract text field
-  if (t.startsWith("{")) {
+  // Find JSON object anywhere in text
+  const jsonStart = t.indexOf("{");
+  if (jsonStart !== -1) {
     try {
-      const parsed = JSON.parse(t);
+      const parsed = JSON.parse(t.slice(jsonStart));
       return parsed.text || t;
     } catch {}
   }
