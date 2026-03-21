@@ -110,9 +110,12 @@ export async function POST(request) {
 
     let parsed;
     try {
-      parsed = JSON.parse(raw);
+       parsed = JSON.parse(raw);
     } catch {
-      parsed = { text: raw, tasks, suggestions: [], mode: "chat" };
+    // Try to extract text from partial JSON
+    const textMatch = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    const cleanedText = textMatch ? textMatch[1].replace(/\\n/g, '\n') : raw;
+    parsed = { text: cleanedText, tasks, suggestions: [] };
     }
 
     return Response.json({
