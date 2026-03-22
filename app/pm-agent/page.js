@@ -106,7 +106,7 @@ export default function PMAgent() {
     })
       .then(r => r.json())
       .then(data => {
-        const initial = [createMsg("assistant", data.text || "Привет. Над чем работаем сегодня?")];
+        const initial = [createMsg("assistant", data.text || "Hello. What are we working on?")];
         setMessages(initial);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(initial)); } catch {}
         setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
