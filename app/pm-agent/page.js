@@ -342,7 +342,7 @@ export default function PMAgent() {
           value={input}
           onChange={handleInput}
           onKeyDown={handleKey}
-          placeholder="Tell Eduard what's happening..."
+          placeholder="Tell me what's going on..."
           disabled={loading}
           style={{
             flex: 1, background: "#161622", border: "1px solid #1E293B",
