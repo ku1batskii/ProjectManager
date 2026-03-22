@@ -51,7 +51,7 @@ export default function TaskBoardPage() {
       <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
         {filtered.length === 0 && (
           <div style={{ textAlign: "center", color: "#334155", fontSize: 13, padding: "60px 20px", lineHeight: 1.7 }}>
-            {tasks.length === 0 ? "No tasks yet\nTell Eduard to create tasks" : "No tasks for this person"}
+            {tasks.length === 0 ? "No tasks yet\ntell Eduard to create tasks" : "No tasks for this person"}
           </div>
         )}
         {filtered.map(task => (
