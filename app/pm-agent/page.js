@@ -112,7 +112,7 @@ export default function PMAgent() {
         setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
       })
       .catch(() => {
-        setMessages([createMsg("assistant", "Привет. Я Эдуард — PM ассистент. Над чем работаем?")]);
+        setMessages([createMsg("assistant", "Hello. I'm Eduard — Project Manager. What are we working on?")]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -209,7 +209,7 @@ export default function PMAgent() {
           }} />
         </div>
         <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Эдуард</div>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Eduard</div>
           <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
             {loading ? "печатает..." : "online"}
           </div>
