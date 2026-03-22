@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
 
 const STORAGE_KEY = "pm_chat";
 const TASKS_KEY = "pm_tasks";
@@ -17,7 +18,6 @@ const createMsg = (role, content) => ({
   content,
 });
 
-// Sanitize loaded messages — ensure they all have id
 const sanitizeMsgs = (msgs) => {
   if (!Array.isArray(msgs)) return [];
   return msgs.map((m, i) => ({
@@ -25,6 +25,19 @@ const sanitizeMsgs = (msgs) => {
     role: m.role || "assistant",
     content: typeof m.content === "string" ? m.content : "",
   })).filter(m => m.content);
+};
+
+const cleanText = (text) => {
+  if (!text) return "";
+  const t = text.trim();
+  const jsonStart = t.indexOf("{");
+  if (jsonStart !== -1) {
+    try {
+      const parsed = JSON.parse(t.slice(jsonStart));
+      return parsed.text || t;
+    } catch {}
+  }
+  return t;
 };
 
 const Avatar = () => (
@@ -48,20 +61,6 @@ const Dots = () => (
   </div>
 );
 
-const cleanText = (text) => {
-  if (!text) return "";
-  const t = text.trim();
-  // Find JSON object anywhere in text
-  const jsonStart = t.indexOf("{");
-  if (jsonStart !== -1) {
-    try {
-      const parsed = JSON.parse(t.slice(jsonStart));
-      return parsed.text || t;
-    } catch {}
-  }
-  return t;
-};
-
 const formatText = (text) => {
   if (!text) return null;
   return text.split("\n").map((line, i) => {
@@ -76,6 +75,7 @@ const formatText = (text) => {
 };
 
 export default function PMAgent() {
+  const { isSignedIn, isLoaded } = useAuth();
   const [messages, setMessages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -87,6 +87,8 @@ export default function PMAgent() {
   const taRef = useRef(null);
 
   useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+
     const savedMsgs = sanitizeMsgs(safeParse(localStorage.getItem(STORAGE_KEY), []));
     const savedTasks = safeParse(localStorage.getItem(TASKS_KEY), []);
 
@@ -98,7 +100,6 @@ export default function PMAgent() {
       return;
     }
 
-    // First visit
     fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -106,21 +107,21 @@ export default function PMAgent() {
     })
       .then(r => r.json())
       .then(data => {
-        const initial = [createMsg("assistant", data.text || "Hello. What are we working on?")];
+        const initial = [createMsg("assistant", data.text || "Hey. What are we working on today?")];
         setMessages(initial);
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(initial)); } catch {}
         setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
       })
       .catch(() => {
-        setMessages([createMsg("assistant", "Hello. I'm Eduard — Project Manager. What are we working on?")]);
+        setMessages([createMsg("assistant", "Hey. I'm Eduard — your PM. What's on the agenda?")]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [isLoaded, isSignedIn]);
 
   useEffect(() => {
-  if (messages.length > 0) {
-    bottomRef.current?.scrollIntoView({ behavior: "instant" });
-  }
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView({ behavior: "instant" });
+    }
   }, [messages, suggestions]);
 
   const saveMessages = (m) => {
@@ -187,12 +188,56 @@ export default function PMAgent() {
     e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
   };
 
+  // Loading state
+  if (!isLoaded) {
+    return (
+      <div style={{ height: "100dvh", background: "#0C0C14", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ color: "#334155", fontSize: 13, fontFamily: "'Sora', sans-serif" }}>Loading...</div>
+      </div>
+    );
+  }
+
+  // Not signed in
+  if (!isSignedIn) {
+    return (
+      <div style={{
+        height: "100dvh", background: "#0C0C14",
+        display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center",
+        fontFamily: "'Sora', 'Segoe UI', sans-serif",
+        gap: 16, padding: 24,
+      }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%",
+          background: "#161622", border: "2px solid #334155",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 20, fontWeight: 700, color: "#94A3B8",
+        }}>E</div>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#F8FAFC", marginBottom: 8 }}>PROJECT MIND</div>
+          <div style={{ fontSize: 13, color: "#64748B" }}>Your personal AI Project Manager</div>
+        </div>
+        <SignInButton mode="modal">
+          <button style={{
+            background: "#1D4ED8", border: "none",
+            color: "#fff", padding: "12px 28px",
+            borderRadius: 10, fontSize: 14,
+            cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
+          }}>
+            Sign In
+          </button>
+        </SignInButton>
+      </div>
+    );
+  }
+
   return (
     <div style={{
-      height: "100svh", background: "#0C0C14",
+      height: "100dvh", background: "#0C0C14",
       display: "flex", flexDirection: "column",
       fontFamily: "'Sora', 'Segoe UI', sans-serif",
       color: "#E2E8F0", maxWidth: 680, margin: "0 auto",
+      overflow: "hidden", position: "relative",
     }}>
       {/* Header */}
       <div style={{
@@ -211,7 +256,7 @@ export default function PMAgent() {
         <div>
           <div style={{ fontWeight: 700, fontSize: 15 }}>Eduard</div>
           <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
-            {loading ? "печатает..." : "online"}
+            {loading ? "typing..." : "PM Agent · online"}
           </div>
         </div>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
@@ -231,6 +276,7 @@ export default function PMAgent() {
               </span>
             )}
           </Link>
+          <UserButton afterSignOutUrl="/pm-agent" />
         </div>
       </div>
 
@@ -296,7 +342,7 @@ export default function PMAgent() {
           value={input}
           onChange={handleInput}
           onKeyDown={handleKey}
-          placeholder="Tell me what's going on..."
+          placeholder="Tell Eduard what's happening..."
           disabled={loading}
           style={{
             flex: 1, background: "#161622", border: "1px solid #1E293B",
