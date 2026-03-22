@@ -170,7 +170,7 @@ export default function PMAgent() {
 
       setSuggestions(Array.isArray(data.suggestions) ? data.suggestions.slice(0, 3) : []);
     } catch {
-      const updated = [...history, createMsg("assistant", "Ошибка. Попробуй снова.")];
+      const updated = [...history, createMsg("assistant", "Error. Try again.")];
       setMessages(updated);
     }
 
@@ -296,7 +296,7 @@ export default function PMAgent() {
           value={input}
           onChange={handleInput}
           onKeyDown={handleKey}
-          placeholder="Расскажи что происходит..."
+          placeholder="Tell me what's going on..."
           disabled={loading}
           style={{
             flex: 1, background: "#161622", border: "1px solid #1E293B",
