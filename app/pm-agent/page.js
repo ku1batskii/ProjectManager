@@ -118,9 +118,9 @@ export default function PMAgent() {
   }, []);
 
   useEffect(() => {
-    requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    });
+  if (messages.length > 0) {
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
+  }
   }, [messages, suggestions]);
 
   const saveMessages = (m) => {
