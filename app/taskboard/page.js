@@ -34,15 +34,15 @@ export default function TaskBoardPage() {
     <div style={{ minHeight: "100svh", background: "#0C0C14", fontFamily: "'Sora','Segoe UI',sans-serif", color: "#E2E8F0", display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "14px 16px", borderBottom: "1px solid #1E293B", background: "#0E0E1A", display: "flex", alignItems: "center", gap: 10, position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ fontWeight: 700, fontSize: 14 }}>To Do</div>
-        <div style={{ fontSize: 10, color: "#475569", background: "#161622", border: "1px solid #1E293B", borderRadius: 20, padding: "2px 8px" }}>{filtered.length} задач</div>
-        <a href="/pm-agent" style={{ marginLeft: "auto", textDecoration: "none", border: "1px solid #1E293B", color: "#64748B", padding: "5px 12px", borderRadius: 8, fontSize: 11 }}>← Чат</a>
+        <div style={{ fontSize: 10, color: "#475569", background: "#161622", border: "1px solid #1E293B", borderRadius: 20, padding: "2px 8px" }}>{filtered.length} tasks</div>
+        <a href="/pm-agent" style={{ marginLeft: "auto", textDecoration: "none", border: "1px solid #1E293B", color: "#64748B", padding: "5px 12px", borderRadius: 8, fontSize: 11 }}>← Chat</a>
       </div>
 
       {tasks.length > 0 && (
         <div style={{ padding: "10px 14px", borderBottom: "1px solid #1E293B", display: "flex", gap: 6, overflowX: "auto", background: "#0E0E1A" }}>
           {people.map(p => (
             <button key={p} onClick={() => setFilter(p)} style={{ background: filter === p ? (ROLE_COLORS[p] || "#334155") : "transparent", border: `1px solid ${filter === p ? (ROLE_COLORS[p] || "#334155") : "#1E293B"}`, color: filter === p ? "#fff" : "#64748B", padding: "4px 10px", borderRadius: 20, fontSize: 11, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
-              {p === "all" ? "Все" : p}
+              {p === "all" ? "All" : p}
             </button>
           ))}
         </div>
@@ -51,7 +51,7 @@ export default function TaskBoardPage() {
       <div style={{ flex: 1, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
         {filtered.length === 0 && (
           <div style={{ textAlign: "center", color: "#334155", fontSize: 13, padding: "60px 20px", lineHeight: 1.7 }}>
-            {tasks.length === 0 ? "Задач пока нет\nСкажи Эдуарду «создай задачи»" : "Нет задач для этого человека"}
+            {tasks.length === 0 ? "No tasks yet\nTell Eduard to create tasks" : "No tasks for this person"}
           </div>
         )}
         {filtered.map(task => (
