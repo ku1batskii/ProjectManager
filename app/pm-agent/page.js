@@ -301,7 +301,7 @@ export default function PMAgent() {
           style={{
             flex: 1, background: "#161622", border: "1px solid #1E293B",
             borderRadius: 22, padding: "11px 16px", color: "#E2E8F0",
-            fontSize: 14, fontFamily: "inherit", outline: "none",
+            fontSize: 16, fontFamily: "inherit", outline: "none",
             resize: "none", lineHeight: 1.5, height: 44, maxHeight: 140, overflow: "auto",
           }}
           onFocus={e => e.target.style.borderColor = "#334155"}
