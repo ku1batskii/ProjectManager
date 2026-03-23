@@ -2,7 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata = {
   title: "PM Assistant",
-  description: "",
+  description: "Personal AI Project Manager — plan sprints, decompose tasks, stay focused",
 };
 
 export const viewport = {
