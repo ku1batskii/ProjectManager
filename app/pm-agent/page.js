@@ -5,14 +5,14 @@ import Link from "next/link";
 import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
 import { supabase } from "../../lib/supabase";
 
-// Fix #2: UUID instead of counter
+// ─── Utils ───────────────────────────────────────────────────────────────────
+
 const createMsg = (role, content, id) => ({
   id: id || crypto.randomUUID(),
   role,
   content,
 });
 
-// Fix #3: Safe cleanText
 const cleanText = (text) => {
   if (!text) return "";
   try {
@@ -22,6 +22,19 @@ const cleanText = (text) => {
     return text.trim();
   }
 };
+
+const callAPI = async (messages, tasks = []) => {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, tasks }),
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+};
+
+// ─── UI Components ───────────────────────────────────────────────────────────
 
 const Avatar = () => (
   <div style={{
@@ -57,9 +70,64 @@ const formatText = (text) => {
   });
 };
 
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
+
+const db = {
+  getSessions: async (userId) => {
+    const { data } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+    return data || [];
+  },
+
+  getMessages: async (sessionId) => {
+    const { data } = await supabase
+      .from("messages")
+      .select("id, role, content")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+    return data || [];
+  },
+
+  createSession: async (userId, title = "New Chat") => {
+    const { data } = await supabase
+      .from("sessions")
+      .insert({ user_id: userId, title: title.slice(0, 40) })
+      .select()
+      .single();
+    return data;
+  },
+
+  saveMessage: async (sessionId, role, content) => {
+    const { data } = await supabase
+      .from("messages")
+      .insert({ session_id: sessionId, role, content })
+      .select()
+      .single();
+    return data;
+  },
+
+  updateSessionTitle: async (sessionId, title) => {
+    await supabase
+      .from("sessions")
+      .update({ title: title.slice(0, 40) })
+      .eq("id", sessionId);
+  },
+
+  deleteSession: async (sessionId) => {
+    await supabase.from("messages").delete().eq("session_id", sessionId);
+    await supabase.from("sessions").delete().eq("id", sessionId);
+  },
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 export default function PMAgent() {
   const { isSignedIn, isLoaded, userId } = useAuth();
   const { user } = useUser();
+
   const [messages, setMessages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -72,101 +140,48 @@ export default function PMAgent() {
 
   const bottomRef = useRef(null);
   const taRef = useRef(null);
-  const initialized = useRef(false); // Fix #4: prevent double init
-  const sendingRef = useRef(false);  // Fix #5: prevent race condition
+  const initialized = useRef(false);
+  const sendingRef = useRef(false);
 
-  const loadSessions = useCallback(async (uid) => {
-    const { data } = await supabase
-      .from("sessions")
-      .select("*")
-      .eq("user_id", uid)
-      .order("created_at", { ascending: false });
-    if (data) setSessions(data);
-    return data || [];
+  // ─── Greeting helper ───────────────────────────────────────────────────────
+
+  const fetchGreeting = useCallback(async () => {
+    const data = await callAPI([{ role: "user", content: "начни" }], []);
+    return {
+      text: data.text || "Привет! Я Эдуард — твой AI project manager. Чем займёмся?",
+      suggestions: data.suggestions || [],
+    };
   }, []);
 
-  const loadMessages = useCallback(async (sessionId) => {
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("session_id", sessionId)
-      .order("created_at", { ascending: true });
-    if (data) {
-      // Fix #7: use real DB ids
-      setMessages(data.map(m => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-      })));
-    }
-  }, []);
+  // ─── Init ─────────────────────────────────────────────────────────────────
 
-  const createSession = useCallback(async (uid, title = "New Chat") => {
-    const { data } = await supabase
-      .from("sessions")
-      .insert({ user_id: uid, title: title.slice(0, 40) })
-      .select()
-      .single();
-    return data;
-  }, []);
-
-  const saveMessageToDB = useCallback(async (sessionId, role, content) => {
-    const { data } = await supabase
-      .from("messages")
-      .insert({ session_id: sessionId, role, content })
-      .select()
-      .single();
-    return data;
-  }, []);
-
-  const deleteSession = useCallback(async (sessionId) => {
-    // Fix #8: manual cascade delete
-    await supabase.from("messages").delete().eq("session_id", sessionId);
-    await supabase.from("sessions").delete().eq("id", sessionId);
-    // Fix #10: update locally instead of refetch
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-    if (sessionId === currentSessionId) {
-      setMessages([]);
-      setSuggestions([]);
-      setCurrentSessionId(null);
-    }
-  }, [currentSessionId]);
-
-  // Fix #4: Strict Mode safe init
   useEffect(() => {
-    if (initialized.current) return;
-    if (!isLoaded || !isSignedIn) return;
+    if (initialized.current || !isLoaded || !isSignedIn) return;
     initialized.current = true;
 
     const init = async () => {
-      const existingSessions = await loadSessions(userId);
-      if (existingSessions.length > 0) {
-        const latest = existingSessions[0];
-        setCurrentSessionId(latest.id);
-        await loadMessages(latest.id);
-        setLoading(false);
-      } else {
-        try {
-          const res = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-             messages: [{ role: "user", content: "начни" }],
-              tasks: [],
-              userId,
-            }),
-          });
-          const data = await res.json();
-          const greetingText = data.text || "Hey. What are we working on today?";
-          const session = await createSession(userId, "New Chat");
-          setCurrentSessionId(session.id);
-          await saveMessageToDB(session.id, "assistant", greetingText);
-          setMessages([createMsg("assistant", greetingText)]);
-          setSuggestions(data.suggestions || []);
+      try {
+        const existingSessions = await db.getSessions(userId);
+
+        if (existingSessions.length > 0) {
+          const latest = existingSessions[0];
+          setSessions(existingSessions);
+          setCurrentSessionId(latest.id);
+          const msgs = await db.getMessages(latest.id);
+          setMessages(msgs.map(m => createMsg(m.role, m.content, m.id)));
+        } else {
+          const { text, suggestions: sugg } = await fetchGreeting();
+          const session = await db.createSession(userId);
+          await db.saveMessage(session.id, "assistant", text);
           setSessions([session]);
-        } catch {
-          setMessages([createMsg("assistant", "Hey. I'm Eduard — your PM.")]);
+          setCurrentSessionId(session.id);
+          setMessages([createMsg("assistant", text)]);
+          setSuggestions(sugg);
         }
+      } catch (err) {
+        console.error("Init error:", err);
+        setMessages([createMsg("assistant", "Привет! Я Эдуард. Чем займёмся?")]);
+      } finally {
         setLoading(false);
       }
     };
@@ -174,16 +189,21 @@ export default function PMAgent() {
     init();
   }, [isLoaded, isSignedIn]); // eslint-disable-line
 
-  // Fix #9: autofocus input
-  useEffect(() => {
-    if (!loading) taRef.current?.focus();
-  }, [loading]);
+  // ─── Scroll to bottom ─────────────────────────────────────────────────────
 
   useEffect(() => {
     if (messages.length > 0) {
       bottomRef.current?.scrollIntoView({ behavior: "instant" });
     }
   }, [messages, suggestions]);
+
+  // ─── Autofocus ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!loading) taRef.current?.focus();
+  }, [loading]);
+
+  // ─── New chat ─────────────────────────────────────────────────────────────
 
   const startNewChat = async () => {
     setSidebarOpen(false);
@@ -192,29 +212,21 @@ export default function PMAgent() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", content: "start" }],
-          tasks: [],
-          userId,
-        }),
-      });
-      const data = await res.json();
-      const greetingText = data.text || "Hey. What are we working on today?";
-      const session = await createSession(userId, "New Chat");
-      setCurrentSessionId(session.id);
-      await saveMessageToDB(session.id, "assistant", greetingText);
-      setMessages([createMsg("assistant", greetingText)]);
-      setSuggestions(data.suggestions || []);
-      // Fix #10: update locally
+      const { text, suggestions: sugg } = await fetchGreeting();
+      const session = await db.createSession(userId);
+      await db.saveMessage(session.id, "assistant", text);
       setSessions(prev => [session, ...prev]);
+      setCurrentSessionId(session.id);
+      setMessages([createMsg("assistant", text)]);
+      setSuggestions(sugg);
     } catch {
-      setMessages([createMsg("assistant", "New session. What are we working on?")]);
+      setMessages([createMsg("assistant", "Привет! Чем займёмся?")]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
+
+  // ─── Switch session ───────────────────────────────────────────────────────
 
   const switchSession = async (session) => {
     setSidebarOpen(false);
@@ -222,76 +234,79 @@ export default function PMAgent() {
     setLoading(true);
     setSuggestions([]);
     setCurrentSessionId(session.id);
-    await loadMessages(session.id);
-    setLoading(false);
+    try {
+      const msgs = await db.getMessages(session.id);
+      setMessages(msgs.map(m => createMsg(m.role, m.content, m.id)));
+    } finally {
+      setLoading(false);
+    }
   };
+
+  // ─── Delete session ───────────────────────────────────────────────────────
+
+  const deleteSession = useCallback(async (sessionId) => {
+    await db.deleteSession(sessionId);
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (sessionId === currentSessionId) {
+      setMessages([]);
+      setSuggestions([]);
+      setCurrentSessionId(null);
+    }
+  }, [currentSessionId]);
+
+  // ─── Send message ─────────────────────────────────────────────────────────
 
   const send = async (text) => {
     const t = (text !== undefined ? text : input).trim();
-    // Fix #5: race condition guard
     if (!t || sendingRef.current) return;
     sendingRef.current = true;
 
+    // Ensure session exists
     let sessionId = currentSessionId;
     if (!sessionId) {
-      const session = await createSession(userId, t);
+      const session = await db.createSession(userId, t);
       sessionId = session.id;
       setCurrentSessionId(sessionId);
       setSessions(prev => [session, ...prev]);
     }
 
+    // Optimistic UI update
     const userMsg = createMsg("user", t);
-    // Fix #6: increased context to 40 messages
     const history = [...messages, userMsg].slice(-40);
     setMessages(history);
-
-    const saved = await saveMessageToDB(sessionId, "user", t);
-    if (saved) {
-      setMessages(prev => prev.map(m =>
-        m.id === userMsg.id ? { ...m, id: saved.id } : m
-      ));
-    }
-
     setInput("");
     if (taRef.current) taRef.current.style.height = "44px";
     setLoading(true);
     setSuggestions([]);
 
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, tasks, userId }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+    // Save user message
+    const savedUser = await db.saveMessage(sessionId, "user", t);
+    if (savedUser) {
+      setMessages(prev => prev.map(m => m.id === userMsg.id ? { ...m, id: savedUser.id } : m));
+    }
 
-      const replyText = data.text || "...";
-      const replyMsg = createMsg("assistant", replyText);
+    // Update session title on first message
+    if (history.length === 1) {
+      await db.updateSessionTitle(sessionId, t);
+      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: t.slice(0, 40) } : s));
+    }
+
+    try {
+      const data = await callAPI(history, tasks);
+
+      // Save and show assistant reply
+      const replyMsg = createMsg("assistant", data.text || "...");
       setMessages(prev => [...prev, replyMsg]);
 
-      const savedReply = await saveMessageToDB(sessionId, "assistant", replyText);
+      const savedReply = await db.saveMessage(sessionId, "assistant", data.text || "...");
       if (savedReply) {
-        setMessages(prev => prev.map(m =>
-          m.id === replyMsg.id ? { ...m, id: savedReply.id } : m
-        ));
+        setMessages(prev => prev.map(m => m.id === replyMsg.id ? { ...m, id: savedReply.id } : m));
       }
 
-      // Update title with first user message
-      if (history.length === 1) {
-        await supabase.from("sessions")
-          .update({ title: t.slice(0, 40) })
-          .eq("id", sessionId);
-        // Fix #10: update locally
-        setSessions(prev => prev.map(s =>
-          s.id === sessionId ? { ...s, title: t.slice(0, 40) } : s
-        ));
-      }
-
+      // Update tasks if returned
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
         const added = data.tasks.length - tasks.length;
         setTasks(data.tasks);
-        try { localStorage.setItem("pm_tasks", JSON.stringify(data.tasks)); } catch {}
         if (added > 0) {
           setTasksBadge(added);
           setTimeout(() => setTasksBadge(0), 3000);
@@ -300,11 +315,11 @@ export default function PMAgent() {
 
       setSuggestions(Array.isArray(data.suggestions) ? data.suggestions.slice(0, 3) : []);
     } catch {
-      setMessages(prev => [...prev, createMsg("assistant", "Error. Try again.")]);
+      setMessages(prev => [...prev, createMsg("assistant", "Ошибка. Попробуй ещё раз.")]);
+    } finally {
+      setLoading(false);
+      sendingRef.current = false;
     }
-
-    setLoading(false);
-    sendingRef.current = false; // Fix #5: release lock
   };
 
   const handleKey = (e) => {
@@ -316,6 +331,8 @@ export default function PMAgent() {
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
   };
+
+  // ─── Auth states ──────────────────────────────────────────────────────────
 
   if (!isLoaded) {
     return (
@@ -332,29 +349,32 @@ export default function PMAgent() {
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
         fontFamily: "Sora, Segoe UI, sans-serif",
-        gap: 16, padding: 24,
+        gap: 16, padding: 24, textAlign: "center",
       }}>
         <div style={{
-          width: 52, height: 52, borderRadius: "50%",
+          width: 56, height: 56, borderRadius: "50%",
           background: "#161622", border: "2px solid #334155",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, fontWeight: 700, color: "#94A3B8",
+          fontSize: 22, fontWeight: 700, color: "#94A3B8",
         }}>E</div>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#F8FAFC", marginBottom: 8 }}>PROJECT MIND</div>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: "#F8FAFC", marginBottom: 6 }}>PROJECT MIND</div>
           <div style={{ fontSize: 13, color: "#64748B" }}>Your personal AI Project Manager</div>
         </div>
         <SignInButton mode="modal">
           <button style={{
-            background: "#1D4ED8", border: "none",
-            color: "#fff", padding: "12px 28px",
-            borderRadius: 10, fontSize: 14,
+            background: "#1D4ED8", border: "none", color: "#fff",
+            padding: "12px 28px", borderRadius: 10, fontSize: 14,
             cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
           }}>Sign In</button>
         </SignInButton>
       </div>
     );
   }
+
+  // ─── Main UI ──────────────────────────────────────────────────────────────
+
+  const userInitials = user?.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "EK";
 
   return (
     <div style={{
@@ -363,16 +383,17 @@ export default function PMAgent() {
       fontFamily: "Sora, Segoe UI, sans-serif",
       color: "#E2E8F0", overflow: "hidden",
     }}>
-      {/* Sidebar */}
+
+      {/* ── Sidebar ── */}
       {sidebarOpen && (
         <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex" }}>
           <div onClick={() => setSidebarOpen(false)} style={{ position: "absolute", inset: 0, background: "#00000080" }} />
           <div style={{
-            position: "relative", zIndex: 1,
-            width: 280, height: "100%",
+            position: "relative", zIndex: 1, width: 280, height: "100%",
             background: "#0E0E1A", borderRight: "1px solid #1E293B",
             display: "flex", flexDirection: "column",
           }}>
+            {/* Sidebar header */}
             <div style={{
               padding: "16px", borderBottom: "1px solid #1E293B",
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -385,6 +406,7 @@ export default function PMAgent() {
               }}>+ New</button>
             </div>
 
+            {/* Sessions list */}
             <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
               {sessions.map(s => (
                 <div key={s.id} style={{ position: "relative", display: "flex", alignItems: "center", marginBottom: 4 }}>
@@ -399,31 +421,33 @@ export default function PMAgent() {
                   }}>
                     {s.title || "New Chat"}
                   </button>
-                  <button onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }} style={{
-                    position: "absolute", right: 6,
-                    background: "transparent", border: "none",
-                    color: "#334155", fontSize: 12,
-                    cursor: "pointer", padding: "4px", lineHeight: 1,
-                  }}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }}
                     onMouseEnter={e => e.currentTarget.style.color = "#EF4444"}
                     onMouseLeave={e => e.currentTarget.style.color = "#334155"}
+                    style={{
+                      position: "absolute", right: 6,
+                      background: "transparent", border: "none",
+                      color: "#334155", fontSize: 12,
+                      cursor: "pointer", padding: "4px", lineHeight: 1,
+                    }}
                   >✕</button>
                 </div>
               ))}
             </div>
 
+            {/* Profile link */}
             <Link href="/profile" onClick={() => setSidebarOpen(false)} style={{
               textDecoration: "none", padding: "14px 16px",
               borderTop: "1px solid #1E293B",
               display: "flex", alignItems: "center", gap: 10,
             }}>
               <div style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: "#1D4ED8",
+                width: 32, height: 32, borderRadius: "50%", background: "#1D4ED8",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0,
               }}>
-                {user?.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "EK"}
+                {userInitials}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -441,8 +465,9 @@ export default function PMAgent() {
         </div>
       )}
 
-      {/* Main */}
+      {/* ── Main area ── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 680, margin: "0 auto", width: "100%" }}>
+
         {/* Header */}
         <div style={{
           background: "#0E0E1A", borderBottom: "1px solid #1E293B",
@@ -450,13 +475,14 @@ export default function PMAgent() {
         }}>
           <button onClick={() => setSidebarOpen(true)} style={{
             background: "transparent", border: "1px solid #1E293B",
-            color: "#64748B", width: 34, height: 34, borderRadius: 8,
+            width: 34, height: 34, borderRadius: 8,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M3 6h18M3 12h18M3 18h18" stroke="#64748B" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </button>
+
           <div style={{ position: "relative" }}>
             <Avatar />
             <div style={{
@@ -466,30 +492,31 @@ export default function PMAgent() {
               border: "2px solid #0E0E1A",
             }} />
           </div>
+
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>Eduard</div>
             <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
               {loading ? "typing..." : "online"}
             </div>
           </div>
-          <div style={{ marginLeft: "auto" }}>
-            <Link href="/taskboard" style={{
-              textDecoration: "none", border: "1px solid #1E293B",
-              color: "#64748B", padding: "5px 12px", borderRadius: 8,
-              fontSize: 11, display: "flex", alignItems: "center", gap: 6,
-            }}>
-              Tasks
-              {tasks.length > 0 && (
-                <span style={{
-                  background: tasksBadge > 0 ? "#F59E0B" : "#334155",
-                  color: tasksBadge > 0 ? "#0C0C14" : "#94A3B8",
-                  borderRadius: 10, padding: "0 5px", fontSize: 9, fontWeight: 700,
-                }}>
-                  {tasksBadge > 0 ? `+${tasksBadge}` : tasks.length}
-                </span>
-              )}
-            </Link>
-          </div>
+
+          <Link href="/taskboard" style={{
+            marginLeft: "auto", textDecoration: "none",
+            border: "1px solid #1E293B", color: "#64748B",
+            padding: "5px 12px", borderRadius: 8,
+            fontSize: 11, display: "flex", alignItems: "center", gap: 6,
+          }}>
+            Tasks
+            {tasks.length > 0 && (
+              <span style={{
+                background: tasksBadge > 0 ? "#F59E0B" : "#334155",
+                color: tasksBadge > 0 ? "#0C0C14" : "#94A3B8",
+                borderRadius: 10, padding: "0 5px", fontSize: 9, fontWeight: 700,
+              }}>
+                {tasksBadge > 0 ? `+${tasksBadge}` : tasks.length}
+              </span>
+            )}
+          </Link>
         </div>
 
         {/* Messages */}
@@ -554,7 +581,7 @@ export default function PMAgent() {
             value={input}
             onChange={handleInput}
             onKeyDown={handleKey}
-            placeholder="Tell me what's going on..."
+            placeholder="Расскажи Эдуарду что происходит..."
             disabled={loading}
             style={{
               flex: 1, background: "#161622", border: "1px solid #1E293B",
@@ -565,13 +592,17 @@ export default function PMAgent() {
             onFocus={e => e.target.style.borderColor = "#334155"}
             onBlur={e => e.target.style.borderColor = "#1E293B"}
           />
-          <button onClick={() => send()} disabled={loading || !input.trim()} style={{
-            width: 44, height: 44, borderRadius: "50%",
-            background: input.trim() && !loading ? "#1D4ED8" : "#161622",
-            border: "1px solid " + (input.trim() && !loading ? "#1D4ED8" : "#1E293B"),
-            cursor: input.trim() && !loading ? "pointer" : "default",
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          }}>
+          <button
+            onClick={() => send()}
+            disabled={loading || !input.trim()}
+            style={{
+              width: 44, height: 44, borderRadius: "50%",
+              background: input.trim() && !loading ? "#1D4ED8" : "#161622",
+              border: "1px solid " + (input.trim() && !loading ? "#1D4ED8" : "#1E293B"),
+              cursor: input.trim() && !loading ? "pointer" : "default",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M5 12H19M19 12L12 5M19 12L12 19"
                 stroke={input.trim() && !loading ? "#fff" : "#334155"}
