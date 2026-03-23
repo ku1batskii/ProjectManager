@@ -179,12 +179,13 @@ export default function PMAgent() {
   };
 
   const switchSession = async (session) => {
-    setSidebarOpen(false);
-    if (session.id === currentSessionId) return;
-    setLoading(true);
-    setCurrentSessionId(session.id);
-    await loadMessages(session.id);
-    setLoading(false);
+  setSidebarOpen(false);
+  if (session.id === currentSessionId) return;
+  setLoading(true);
+  setSuggestions([]); // ← добавь эту строку
+  setCurrentSessionId(session.id);
+  await loadMessages(session.id);
+  setLoading(false);
   };
 
   const send = async (text) => {
