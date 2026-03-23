@@ -62,11 +62,7 @@ CRITICAL FORMAT — respond ONLY with valid JSON, nothing else, no markdown:
 suggestions: exactly 3, max 7 words each, Russian, sound like the user.
 Respond in Russian always.`;
 
-const DEFAULT_SUGGESTIONS = [
-  "Разбей задачу на подзадачи",
-  "Спланируй спринт на неделю",
-  "Это стоит делать сейчас?",
-];
+const DEFAULT_SUGGESTIONS = [];
 
 export async function POST(request) {
   try {
@@ -124,9 +120,7 @@ export async function POST(request) {
     }
 
     const suggestions =
-      Array.isArray(parsed.suggestions) && parsed.suggestions.length > 0
-        ? parsed.suggestions.slice(0, 3)
-        : DEFAULT_SUGGESTIONS;
+  Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [];
 
     return Response.json({
       text: parsed.text || "...",
