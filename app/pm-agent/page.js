@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
 import { supabase } from "../../lib/supabase";
@@ -191,11 +191,11 @@ export default function PMAgent() {
 
   // ─── Scroll to bottom ─────────────────────────────────────────────────────
 
-useEffect(() => {
-  if (messages.length > 0) {
-    bottomRef.current?.scrollIntoView({ behavior: "instant" });
-  }
-}, [messages.length, suggestions.length]);
+  useLayoutEffect(() => {
+    if (messages.length > 0) {
+      bottomRef.current?.scrollIntoView();
+    }
+  }, [messages.length, suggestions.length]);
 
   // ─── Autofocus ────────────────────────────────────────────────────────────
 
