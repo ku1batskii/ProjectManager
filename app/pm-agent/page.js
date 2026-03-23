@@ -179,13 +179,12 @@ export default function PMAgent() {
   };
 
   const switchSession = async (session) => {
-  setSidebarOpen(false);
-  if (session.id === currentSessionId) return;
-  setLoading(true);
-  setSuggestions([]); // ← добавь эту строку
-  setCurrentSessionId(session.id);
-  await loadMessages(session.id);
-  setLoading(false);
+    setSidebarOpen(false);
+    if (session.id === currentSessionId) return;
+    setLoading(true);
+    setCurrentSessionId(session.id);
+    await loadMessages(session.id);
+    setLoading(false);
   };
 
   const send = async (text) => {
@@ -224,7 +223,7 @@ export default function PMAgent() {
       setMessages(updated);
       await saveMessageToDB(sessionId, "assistant", replyText);
 
-      if (messages.length === 0) {
+      if (history.length === 1) {
         await supabase.from("sessions").update({ title: t.slice(0, 40) }).eq("id", sessionId);
         await loadSessions(userId);
       }
@@ -345,21 +344,33 @@ export default function PMAgent() {
             </div>
 
             {/* User profile at bottom */}
-            <div style={{
+            <Link href="/profile" onClick={() => setSidebarOpen(false)} style={{
+              textDecoration: "none",
               padding: "14px 16px",
               borderTop: "1px solid #1E293B",
               display: "flex", alignItems: "center", gap: 10,
+              cursor: "pointer",
             }}>
-              <UserButton afterSignOutUrl="/pm-agent" />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0" }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: "50%",
+                background: "#1D4ED8",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0,
+              }}>
+                {user?.fullName?.slice(0, 2).toUpperCase() || "EK"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {user?.fullName || "User"}
                 </div>
-                <div style={{ fontSize: 10, color: "#475569" }}>
+                <div style={{ fontSize: 10, color: "#475569", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {user?.primaryEmailAddress?.emailAddress || ""}
                 </div>
               </div>
-            </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M9 18l6-6-6-6" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </Link>
           </div>
         </div>
       )}
