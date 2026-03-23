@@ -286,9 +286,10 @@ export default function PMAgent() {
     }
 
     // Update session title on first message
-    if (history.length === 1) {
-      await db.updateSessionTitle(sessionId, t);
-      setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: t.slice(0, 40) } : s));
+    const userMsgCount = history.filter(m => m.role === "user").length;
+    if (userMsgCount === 1) {
+    await db.updateSessionTitle(sessionId, t);
+    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, title: t.slice(0, 40) } : s));
     }
 
     try {
