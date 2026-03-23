@@ -202,17 +202,17 @@ export default function LandingPage() {
       {/* Nav */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: "#0C0C14CC", backdropFilter: "blur(12px)", borderBottom: "1px solid #1E293B" }}>
         <nav className="nav-inner" style={{
-          padding: "12px 24px",
+          padding: "16px 24px",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           maxWidth: 1100, margin: "0 auto", gap: 16,
         }}>
           {/* Logo */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
             <div style={{
-              width: 28, height: 28, borderRadius: "50%",
+              width: 32, height: 32, borderRadius: "50%",
               background: "#161622", border: "2px solid #334155",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 11, fontWeight: 700, color: "#94A3B8",
+              fontSize: 12, fontWeight: 700, color: "#94A3B8",
             }}>E</div>
             <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: -0.3 }}>PROJECTME</span>
           </div>
@@ -223,25 +223,25 @@ export default function LandingPage() {
               display: "flex",
               background: "#0E0E1A",
               border: "1px solid #1E293B",
-              borderRadius: 8, padding: 2,
+              borderRadius: 10, padding: 3,
             }}>
               <button onClick={() => setLang("en")} style={{
                 background: lang === "en" ? "#161622" : "transparent",
                 border: "none", color: lang === "en" ? "#E2E8F0" : "#475569",
-                padding: "5px 12px", borderRadius: 6,
+                padding: "6px 14px", borderRadius: 7,
                 fontSize: 11, fontWeight: 700, cursor: "pointer",
                 fontFamily: "inherit", letterSpacing: 1, transition: "all 0.15s",
               }}>EN</button>
               <button onClick={() => setLang("ru")} style={{
                 background: lang === "ru" ? "#161622" : "transparent",
                 border: "none", color: lang === "ru" ? "#E2E8F0" : "#475569",
-                padding: "5px 12px", borderRadius: 6,
+                padding: "6px 14px", borderRadius: 7,
                 fontSize: 11, fontWeight: 700, cursor: "pointer",
                 fontFamily: "inherit", letterSpacing: 1, transition: "all 0.15s",
               }}>RU</button>
             </div>
             <Link href="/pm-agent" className="cta-btn" style={{
-              padding: "9px 20px", fontSize: 13,
+              padding: "10px 22px", fontSize: 13,
               whiteSpace: "nowrap", borderRadius: 10,
             }}>
               {t.nav_cta}
