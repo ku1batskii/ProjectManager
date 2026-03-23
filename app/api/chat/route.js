@@ -68,7 +68,9 @@ RESPONSE FORMAT — ALWAYS valid JSON only, NO markdown, NO backticks, NO text o
 
 suggestions: exactly 3, max 7 words each, same language as user, sound like the user talking, contextually relevant to what was just discussed.
 
-Respond in the language the user writes in (Russian or English).`;
+ALWAYS respond in Russian by default.
+Switch to English ONLY if the user writes multiple messages in English.
+The — definition must ALWAYS be in the same language as the rest of your reply.`;
 
 export async function POST(request) {
   try {
