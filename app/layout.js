@@ -15,7 +15,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body style={{ margin: 0, padding: 0, background: "#0C0C14", overflow: "hidden" }}>
+      <body style={{ margin: 0, padding: 0, background: "#0C0C14", overflow: "auto" }}>
         <ClerkProvider appearance={{
           variables: {
             colorBackground: "#0E0E1A",
