@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const CONTENT = {
   en: {
-    nav_cta: "Get your first plan →",
+    nav_cta: "Start →",
     badge: "Early access · $4.99/mo",
     hero_title: "Stop guessing\nwhat to do next.",
     hero_sub: "Eduard turns your chaos into a clear execution plan in 60 seconds. AI Project Manager for solo builders.",
@@ -71,7 +71,7 @@ const CONTENT = {
     online: "online",
   },
   ru: {
-    nav_cta: "Получить первый план →",
+    nav_cta: "Начать →",
     badge: "Ранний доступ · $4.99/мес",
     hero_title: "Хватит гадать\nчто делать дальше.",
     hero_sub: "Эдуард превращает твой хаос в чёткий план действий за 60 секунд. AI Project Manager для соло-строителей.",
