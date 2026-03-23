@@ -151,7 +151,7 @@ export default function LandingPage() {
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: 11, fontWeight: 700, color: "#94A3B8",
           }}>E</div>
-          <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: -0.3 }}>PROJECT MIND</span>
+          <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: -0.3 }}>PROJECTME</span>
         </div>
         <Link href="/pm-agent" className="cta-btn" style={{ padding: "8px 20px", fontSize: 13 }}>
           Open App →
@@ -382,7 +382,7 @@ export default function LandingPage() {
         textAlign: "center",
         fontSize: 12, color: "#334155",
       }}>
-        PROJECT MIND · 2025 · Built by a solo founder, for solo founders
+        PROJECTME · 2025 · Built by a solo founder, for solo founders
       </footer>
     </div>
   );
