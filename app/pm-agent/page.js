@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
+import { useAuth, UserButton, SignInButton, useUser } from "@clerk/nextjs";
 import { supabase } from "../../lib/supabase";
 
 let msgCounter = 0;
@@ -61,6 +61,7 @@ const formatText = (text) => {
 
 export default function PMAgent() {
   const { isSignedIn, isLoaded, userId } = useAuth();
+  const { user } = useUser();
   const [messages, setMessages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -74,7 +75,6 @@ export default function PMAgent() {
   const bottomRef = useRef(null);
   const taRef = useRef(null);
 
-  // Load sessions from Supabase
   const loadSessions = async (uid) => {
     const { data } = await supabase
       .from("sessions")
@@ -85,7 +85,6 @@ export default function PMAgent() {
     return data || [];
   };
 
-  // Load messages for a session
   const loadMessages = async (sessionId) => {
     const { data } = await supabase
       .from("messages")
@@ -98,18 +97,15 @@ export default function PMAgent() {
     }
   };
 
-  // Create new session
-  const createSession = async (uid, firstMessage = "New Chat") => {
-    const title = firstMessage.slice(0, 40);
+  const createSession = async (uid, title = "New Chat") => {
     const { data } = await supabase
       .from("sessions")
-      .insert({ user_id: uid, title })
+      .insert({ user_id: uid, title: title.slice(0, 40) })
       .select()
       .single();
     return data;
   };
 
-  // Save message to Supabase
   const saveMessageToDB = async (sessionId, role, content) => {
     await supabase.from("messages").insert({ session_id: sessionId, role, content });
   };
@@ -126,7 +122,6 @@ export default function PMAgent() {
         await loadMessages(latest.id);
         setLoading(false);
       } else {
-        // First time — create session and get greeting
         try {
           const res = await fetch("/api/chat", {
             method: "POST",
@@ -135,16 +130,14 @@ export default function PMAgent() {
           });
           const data = await res.json();
           const greetingText = data.text || "Hey. What are we working on today?";
-
           const session = await createSession(userId, "New Chat");
           setCurrentSessionId(session.id);
           await saveMessageToDB(session.id, "assistant", greetingText);
-
           setMessages([createMsg("assistant", greetingText)]);
           setSuggestions(data.suggestions || []);
           await loadSessions(userId);
         } catch {
-          setMessages([createMsg("assistant", "Hey. I'm Eduard — your PM. What's on the agenda?")]);
+          setMessages([createMsg("assistant", "Hey. I'm Eduard — your PM.")]);
         }
         setLoading(false);
       }
@@ -173,11 +166,9 @@ export default function PMAgent() {
       });
       const data = await res.json();
       const greetingText = data.text || "Hey. What are we working on today?";
-
       const session = await createSession(userId, "New Chat");
       setCurrentSessionId(session.id);
       await saveMessageToDB(session.id, "assistant", greetingText);
-
       setMessages([createMsg("assistant", greetingText)]);
       setSuggestions(data.suggestions || []);
       await loadSessions(userId);
@@ -188,22 +179,19 @@ export default function PMAgent() {
   };
 
   const switchSession = async (session) => {
-  setSidebarOpen(false);
-  if (session.id === currentSessionId) return; // ← добавь эту строку
-  setLoading(true);
-  setCurrentSessionId(session.id);
-  await loadMessages(session.id);
-  setLoading(false);
+    setSidebarOpen(false);
+    if (session.id === currentSessionId) return;
+    setLoading(true);
+    setCurrentSessionId(session.id);
+    await loadMessages(session.id);
+    setLoading(false);
   };
-
 
   const send = async (text) => {
     const t = (text !== undefined ? text : input).trim();
     if (!t || loading) return;
 
     let sessionId = currentSessionId;
-
-    // Create session if none
     if (!sessionId) {
       const session = await createSession(userId, t);
       sessionId = session.id;
@@ -213,7 +201,6 @@ export default function PMAgent() {
 
     const userMsg = createMsg("user", t);
     const history = [...messages, userMsg].slice(-20);
-
     setMessages(history);
     await saveMessageToDB(sessionId, "user", t);
 
@@ -236,7 +223,6 @@ export default function PMAgent() {
       setMessages(updated);
       await saveMessageToDB(sessionId, "assistant", replyText);
 
-      // Update session title with first user message
       if (messages.length === 0) {
         await supabase.from("sessions").update({ title: t.slice(0, 40) }).eq("id", sessionId);
         await loadSessions(userId);
@@ -318,21 +304,15 @@ export default function PMAgent() {
     }}>
       {/* Sidebar */}
       {sidebarOpen && (
-        <div style={{
-          position: "fixed", inset: 0, zIndex: 50,
-          display: "flex",
-        }}>
-          {/* Backdrop */}
-          <div onClick={() => setSidebarOpen(false)} style={{
-            position: "absolute", inset: 0, background: "#00000080",
-          }} />
-          {/* Panel */}
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex" }}>
+          <div onClick={() => setSidebarOpen(false)} style={{ position: "absolute", inset: 0, background: "#00000080" }} />
           <div style={{
             position: "relative", zIndex: 1,
             width: 280, height: "100%",
             background: "#0E0E1A", borderRight: "1px solid #1E293B",
             display: "flex", flexDirection: "column",
           }}>
+            {/* Sidebar header */}
             <div style={{
               padding: "16px", borderBottom: "1px solid #1E293B",
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -344,6 +324,8 @@ export default function PMAgent() {
                 cursor: "pointer", fontFamily: "inherit",
               }}>+ New</button>
             </div>
+
+            {/* Sessions list */}
             <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
               {sessions.map(s => (
                 <button key={s.id} onClick={() => switchSession(s)} style={{
@@ -359,6 +341,23 @@ export default function PMAgent() {
                   {s.title || "New Chat"}
                 </button>
               ))}
+            </div>
+
+            {/* User profile at bottom */}
+            <div style={{
+              padding: "14px 16px",
+              borderTop: "1px solid #1E293B",
+              display: "flex", alignItems: "center", gap: 10,
+            }}>
+              <UserButton afterSignOutUrl="/pm-agent" />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0" }}>
+                  {user?.fullName || "User"}
+                </div>
+                <div style={{ fontSize: 10, color: "#475569" }}>
+                  {user?.primaryEmailAddress?.emailAddress || ""}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -399,7 +398,7 @@ export default function PMAgent() {
               {loading ? "typing..." : "PM Agent · online"}
             </div>
           </div>
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ marginLeft: "auto" }}>
             <Link href="/taskboard" style={{
               textDecoration: "none", border: "1px solid #1E293B",
               color: "#64748B", padding: "5px 12px", borderRadius: 8,
@@ -416,7 +415,6 @@ export default function PMAgent() {
                 </span>
               )}
             </Link>
-            <UserButton afterSignOutUrl="/pm-agent" />
           </div>
         </div>
 
