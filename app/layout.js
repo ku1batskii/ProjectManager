@@ -1,8 +1,8 @@
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata = {
-  title: "PROJECT MIND",
-  description: "PM Assistant",
+  title: "PM Assistant",
+  description: "",
 };
 
 export const viewport = {
