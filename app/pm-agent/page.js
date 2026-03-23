@@ -1,28 +1,26 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useAuth, UserButton, SignInButton, useUser } from "@clerk/nextjs";
+import { useAuth, SignInButton, useUser } from "@clerk/nextjs";
 import { supabase } from "../../lib/supabase";
 
-let msgCounter = 0;
-const createMsg = (role, content) => ({
-  id: `msg_${++msgCounter}_${Date.now()}`,
+// Fix #2: UUID instead of counter
+const createMsg = (role, content, id) => ({
+  id: id || crypto.randomUUID(),
   role,
   content,
 });
 
+// Fix #3: Safe cleanText
 const cleanText = (text) => {
   if (!text) return "";
-  const t = text.trim();
-  const jsonStart = t.indexOf("{");
-  if (jsonStart !== -1) {
-    try {
-      const parsed = JSON.parse(t.slice(jsonStart));
-      return parsed.text || t;
-    } catch {}
+  try {
+    const parsed = JSON.parse(text);
+    return parsed.text || text;
+  } catch {
+    return text.trim();
   }
-  return t;
 };
 
 const Avatar = () => (
@@ -74,8 +72,10 @@ export default function PMAgent() {
 
   const bottomRef = useRef(null);
   const taRef = useRef(null);
+  const initialized = useRef(false); // Fix #4: prevent double init
+  const sendingRef = useRef(false);  // Fix #5: prevent race condition
 
-  const loadSessions = async (uid) => {
+  const loadSessions = useCallback(async (uid) => {
     const { data } = await supabase
       .from("sessions")
       .select("*")
@@ -83,39 +83,63 @@ export default function PMAgent() {
       .order("created_at", { ascending: false });
     if (data) setSessions(data);
     return data || [];
-  };
+  }, []);
 
-  const loadMessages = async (sessionId) => {
+  const loadMessages = useCallback(async (sessionId) => {
     const { data } = await supabase
       .from("messages")
       .select("*")
       .eq("session_id", sessionId)
       .order("created_at", { ascending: true });
     if (data) {
-      const msgs = data.map(m => createMsg(m.role, m.content));
-      setMessages(msgs);
+      // Fix #7: use real DB ids
+      setMessages(data.map(m => ({
+        id: m.id,
+        role: m.role,
+        content: m.content,
+      })));
     }
-  };
+  }, []);
 
-  const createSession = async (uid, title = "New Chat") => {
+  const createSession = useCallback(async (uid, title = "New Chat") => {
     const { data } = await supabase
       .from("sessions")
       .insert({ user_id: uid, title: title.slice(0, 40) })
       .select()
       .single();
     return data;
-  };
+  }, []);
 
-  const saveMessageToDB = async (sessionId, role, content) => {
-    await supabase.from("messages").insert({ session_id: sessionId, role, content });
-  };
+  const saveMessageToDB = useCallback(async (sessionId, role, content) => {
+    const { data } = await supabase
+      .from("messages")
+      .insert({ session_id: sessionId, role, content })
+      .select()
+      .single();
+    return data;
+  }, []);
 
+  const deleteSession = useCallback(async (sessionId) => {
+    // Fix #8: manual cascade delete
+    await supabase.from("messages").delete().eq("session_id", sessionId);
+    await supabase.from("sessions").delete().eq("id", sessionId);
+    // Fix #10: update locally instead of refetch
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    if (sessionId === currentSessionId) {
+      setMessages([]);
+      setSuggestions([]);
+      setCurrentSessionId(null);
+    }
+  }, [currentSessionId]);
+
+  // Fix #4: Strict Mode safe init
   useEffect(() => {
+    if (initialized.current) return;
     if (!isLoaded || !isSignedIn) return;
+    initialized.current = true;
 
     const init = async () => {
       const existingSessions = await loadSessions(userId);
-
       if (existingSessions.length > 0) {
         const latest = existingSessions[0];
         setCurrentSessionId(latest.id);
@@ -126,7 +150,11 @@ export default function PMAgent() {
           const res = await fetch("/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ messages: [{ role: "user", content: "start" }], tasks: [] }),
+            body: JSON.stringify({
+              messages: [{ role: "user", content: "start" }],
+              tasks: [],
+              userId,
+            }),
           });
           const data = await res.json();
           const greetingText = data.text || "Hey. What are we working on today?";
@@ -135,7 +163,7 @@ export default function PMAgent() {
           await saveMessageToDB(session.id, "assistant", greetingText);
           setMessages([createMsg("assistant", greetingText)]);
           setSuggestions(data.suggestions || []);
-          await loadSessions(userId);
+          setSessions([session]);
         } catch {
           setMessages([createMsg("assistant", "Hey. I'm Eduard — your PM.")]);
         }
@@ -144,7 +172,12 @@ export default function PMAgent() {
     };
 
     init();
-  }, [isLoaded, isSignedIn, userId]);
+  }, [isLoaded, isSignedIn]); // eslint-disable-line
+
+  // Fix #9: autofocus input
+  useEffect(() => {
+    if (!loading) taRef.current?.focus();
+  }, [loading]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -162,7 +195,11 @@ export default function PMAgent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [{ role: "user", content: "start" }], tasks: [] }),
+        body: JSON.stringify({
+          messages: [{ role: "user", content: "start" }],
+          tasks: [],
+          userId,
+        }),
       });
       const data = await res.json();
       const greetingText = data.text || "Hey. What are we working on today?";
@@ -171,7 +208,8 @@ export default function PMAgent() {
       await saveMessageToDB(session.id, "assistant", greetingText);
       setMessages([createMsg("assistant", greetingText)]);
       setSuggestions(data.suggestions || []);
-      await loadSessions(userId);
+      // Fix #10: update locally
+      setSessions(prev => [session, ...prev]);
     } catch {
       setMessages([createMsg("assistant", "New session. What are we working on?")]);
     }
@@ -182,6 +220,7 @@ export default function PMAgent() {
     setSidebarOpen(false);
     if (session.id === currentSessionId) return;
     setLoading(true);
+    setSuggestions([]);
     setCurrentSessionId(session.id);
     await loadMessages(session.id);
     setLoading(false);
@@ -189,20 +228,29 @@ export default function PMAgent() {
 
   const send = async (text) => {
     const t = (text !== undefined ? text : input).trim();
-    if (!t || loading) return;
+    // Fix #5: race condition guard
+    if (!t || sendingRef.current) return;
+    sendingRef.current = true;
 
     let sessionId = currentSessionId;
     if (!sessionId) {
       const session = await createSession(userId, t);
       sessionId = session.id;
       setCurrentSessionId(sessionId);
-      await loadSessions(userId);
+      setSessions(prev => [session, ...prev]);
     }
 
     const userMsg = createMsg("user", t);
-    const history = [...messages, userMsg].slice(-20);
+    // Fix #6: increased context to 40 messages
+    const history = [...messages, userMsg].slice(-40);
     setMessages(history);
-    await saveMessageToDB(sessionId, "user", t);
+
+    const saved = await saveMessageToDB(sessionId, "user", t);
+    if (saved) {
+      setMessages(prev => prev.map(m =>
+        m.id === userMsg.id ? { ...m, id: saved.id } : m
+      ));
+    }
 
     setInput("");
     if (taRef.current) taRef.current.style.height = "44px";
@@ -213,19 +261,31 @@ export default function PMAgent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history, tasks }),
+        body: JSON.stringify({ messages: history, tasks, userId }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
       const replyText = data.text || "...";
-      const updated = [...history, createMsg("assistant", replyText)];
-      setMessages(updated);
-      await saveMessageToDB(sessionId, "assistant", replyText);
+      const replyMsg = createMsg("assistant", replyText);
+      setMessages(prev => [...prev, replyMsg]);
 
+      const savedReply = await saveMessageToDB(sessionId, "assistant", replyText);
+      if (savedReply) {
+        setMessages(prev => prev.map(m =>
+          m.id === replyMsg.id ? { ...m, id: savedReply.id } : m
+        ));
+      }
+
+      // Update title with first user message
       if (history.length === 1) {
-        await supabase.from("sessions").update({ title: t.slice(0, 40) }).eq("id", sessionId);
-        await loadSessions(userId);
+        await supabase.from("sessions")
+          .update({ title: t.slice(0, 40) })
+          .eq("id", sessionId);
+        // Fix #10: update locally
+        setSessions(prev => prev.map(s =>
+          s.id === sessionId ? { ...s, title: t.slice(0, 40) } : s
+        ));
       }
 
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
@@ -240,10 +300,11 @@ export default function PMAgent() {
 
       setSuggestions(Array.isArray(data.suggestions) ? data.suggestions.slice(0, 3) : []);
     } catch {
-      setMessages([...history, createMsg("assistant", "Error. Try again.")]);
+      setMessages(prev => [...prev, createMsg("assistant", "Error. Try again.")]);
     }
 
     setLoading(false);
+    sendingRef.current = false; // Fix #5: release lock
   };
 
   const handleKey = (e) => {
@@ -259,7 +320,7 @@ export default function PMAgent() {
   if (!isLoaded) {
     return (
       <div style={{ height: "100dvh", background: "#0C0C14", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ color: "#334155", fontSize: 13, fontFamily: "'Sora', sans-serif" }}>Loading...</div>
+        <div style={{ color: "#334155", fontSize: 13, fontFamily: "Sora, sans-serif" }}>Loading...</div>
       </div>
     );
   }
@@ -270,7 +331,7 @@ export default function PMAgent() {
         height: "100dvh", background: "#0C0C14",
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        fontFamily: "'Sora', 'Segoe UI', sans-serif",
+        fontFamily: "Sora, Segoe UI, sans-serif",
         gap: 16, padding: 24,
       }}>
         <div style={{
@@ -299,7 +360,7 @@ export default function PMAgent() {
     <div style={{
       height: "100dvh", background: "#0C0C14",
       display: "flex", position: "relative",
-      fontFamily: "'Sora', 'Segoe UI', sans-serif",
+      fontFamily: "Sora, Segoe UI, sans-serif",
       color: "#E2E8F0", overflow: "hidden",
     }}>
       {/* Sidebar */}
@@ -312,7 +373,6 @@ export default function PMAgent() {
             background: "#0E0E1A", borderRight: "1px solid #1E293B",
             display: "flex", flexDirection: "column",
           }}>
-            {/* Sidebar header */}
             <div style={{
               padding: "16px", borderBottom: "1px solid #1E293B",
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -325,39 +385,45 @@ export default function PMAgent() {
               }}>+ New</button>
             </div>
 
-            {/* Sessions list */}
             <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
               {sessions.map(s => (
-                <button key={s.id} onClick={() => switchSession(s)} style={{
-                  width: "100%", textAlign: "left",
-                  background: s.id === currentSessionId ? "#161622" : "transparent",
-                  border: s.id === currentSessionId ? "1px solid #1E293B" : "1px solid transparent",
-                  color: s.id === currentSessionId ? "#E2E8F0" : "#64748B",
-                  padding: "10px 12px", borderRadius: 8,
-                  fontSize: 12, cursor: "pointer",
-                  fontFamily: "inherit", marginBottom: 4,
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>
-                  {s.title || "New Chat"}
-                </button>
+                <div key={s.id} style={{ position: "relative", display: "flex", alignItems: "center", marginBottom: 4 }}>
+                  <button onClick={() => switchSession(s)} style={{
+                    flex: 1, textAlign: "left",
+                    background: s.id === currentSessionId ? "#161622" : "transparent",
+                    border: s.id === currentSessionId ? "1px solid #1E293B" : "1px solid transparent",
+                    color: s.id === currentSessionId ? "#E2E8F0" : "#64748B",
+                    padding: "10px 32px 10px 12px", borderRadius: 8,
+                    fontSize: 12, cursor: "pointer", fontFamily: "inherit",
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                  }}>
+                    {s.title || "New Chat"}
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteSession(s.id); }} style={{
+                    position: "absolute", right: 6,
+                    background: "transparent", border: "none",
+                    color: "#334155", fontSize: 12,
+                    cursor: "pointer", padding: "4px", lineHeight: 1,
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.color = "#EF4444"}
+                    onMouseLeave={e => e.currentTarget.style.color = "#334155"}
+                  >✕</button>
+                </div>
               ))}
             </div>
 
-            {/* User profile at bottom */}
             <Link href="/profile" onClick={() => setSidebarOpen(false)} style={{
-              textDecoration: "none",
-              padding: "14px 16px",
+              textDecoration: "none", padding: "14px 16px",
               borderTop: "1px solid #1E293B",
               display: "flex", alignItems: "center", gap: 10,
-              cursor: "pointer",
             }}>
               <div style={{
                 width: 32, height: 32, borderRadius: "50%",
                 background: "#1D4ED8",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 12, fontWeight: 700, color: "#fff", flexShrink: 0,
+                fontSize: 11, fontWeight: 700, color: "#fff", flexShrink: 0,
               }}>
-                {user?.fullName?.slice(0, 2).toUpperCase() || "EK"}
+                {user?.fullName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "EK"}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -376,10 +442,7 @@ export default function PMAgent() {
       )}
 
       {/* Main */}
-      <div style={{
-        flex: 1, display: "flex", flexDirection: "column",
-        maxWidth: 680, margin: "0 auto", width: "100%",
-      }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 680, margin: "0 auto", width: "100%" }}>
         {/* Header */}
         <div style={{
           background: "#0E0E1A", borderBottom: "1px solid #1E293B",
@@ -388,8 +451,7 @@ export default function PMAgent() {
           <button onClick={() => setSidebarOpen(true)} style={{
             background: "transparent", border: "1px solid #1E293B",
             color: "#64748B", width: 34, height: 34, borderRadius: 8,
-            cursor: "pointer", display: "flex", alignItems: "center",
-            justifyContent: "center", flexShrink: 0,
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
               <path d="M3 6h18M3 12h18M3 18h18" stroke="#64748B" strokeWidth="2" strokeLinecap="round"/>
@@ -508,8 +570,7 @@ export default function PMAgent() {
             background: input.trim() && !loading ? "#1D4ED8" : "#161622",
             border: "1px solid " + (input.trim() && !loading ? "#1D4ED8" : "#1E293B"),
             cursor: input.trim() && !loading ? "pointer" : "default",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
           }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <path d="M5 12H19M19 12L12 5M19 12L12 19"
