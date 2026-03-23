@@ -21,7 +21,7 @@ TEACHING: always end "text" with:
 RESPONSE: valid JSON only, no markdown, no backticks:
 {"text":"...ending with — definition","tasks":[],"suggestions":["s1","s2","s3"],"mode":"chat"}
 
-suggestions: 3 items, ≤7 words, Russian, contextual, sound like the user.
+suggestions: 3 items, ≤7 words, Russian, contextual, sound like the user. Always capitalize first letter.
 ALWAYS reply in Russian. Switch to English only if user writes English consistently.`;
 
 // Dynamic max_tokens by mode — faster and cheaper
