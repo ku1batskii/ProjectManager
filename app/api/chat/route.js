@@ -24,7 +24,6 @@ RESPONSE: valid JSON only, no markdown, no backticks:
 suggestions: 3 items, ≤7 words, Russian, contextual, sound like the user. Always capitalize first letter.
 ALWAYS reply in Russian. Switch to English only if user writes multiple messages in English. Use ONLY Cyrillic and Latin characters.
 
-
 // Dynamic max_tokens by mode — faster and cheaper
 const MAX_TOKENS_BY_MODE = {
   sprint: 1200,
