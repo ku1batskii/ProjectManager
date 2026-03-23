@@ -202,7 +202,7 @@ export default function LandingPage() {
       {/* Nav */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: "#0C0C14CC", backdropFilter: "blur(12px)", borderBottom: "1px solid #1E293B" }}>
         <nav className="nav-inner" style={{
-          padding: "16px 24px",
+          padding: "18px 24px",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           maxWidth: 1100, margin: "0 auto", gap: 16,
         }}>
@@ -228,20 +228,20 @@ export default function LandingPage() {
               <button onClick={() => setLang("en")} style={{
                 background: lang === "en" ? "#161622" : "transparent",
                 border: "none", color: lang === "en" ? "#E2E8F0" : "#475569",
-                padding: "6px 14px", borderRadius: 7,
+                padding: "8px 14px", borderRadius: 7,
                 fontSize: 11, fontWeight: 700, cursor: "pointer",
                 fontFamily: "inherit", letterSpacing: 1, transition: "all 0.15s",
               }}>EN</button>
               <button onClick={() => setLang("ru")} style={{
                 background: lang === "ru" ? "#161622" : "transparent",
                 border: "none", color: lang === "ru" ? "#E2E8F0" : "#475569",
-                padding: "6px 14px", borderRadius: 7,
+                padding: "8px 14px", borderRadius: 7,
                 fontSize: 11, fontWeight: 700, cursor: "pointer",
                 fontFamily: "inherit", letterSpacing: 1, transition: "all 0.15s",
               }}>RU</button>
             </div>
             <Link href="/pm-agent" className="cta-btn" style={{
-              padding: "10px 22px", fontSize: 13,
+              padding: "12px 22px", fontSize: 13,
               whiteSpace: "nowrap", borderRadius: 10,
             }}>
               {t.nav_cta}
