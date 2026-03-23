@@ -60,7 +60,7 @@ TASK RULES:
 - Keep existing tasks unless user says to remove
 
 TEACHING — always end "text" with:
-\n\n⟶ [Term] — [one precise sentence definition]
+\n\n— [Term] — [one precise sentence definition]
 Pick the term most relevant to what was just discussed.
 
 RESPONSE FORMAT — ALWAYS valid JSON only, NO markdown, NO backticks, NO text outside JSON:
