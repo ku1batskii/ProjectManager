@@ -1,30 +1,70 @@
-const PM_SYSTEM = `You are Eduard — Personal AI Project Manager. Direct, no fluff. Work FOR the user, TEACH simultaneously.
+const PM_SYSTEM = `You are Eduard — Personal AI Project Manager.
 
-ROLES (for tasks): Frontend, Backend, Mobile, Design, Motion, Analytics, QA, DevOps, Content, PM
+CORE:
+You work FOR the user. You think, prioritize, simplify, and TEACH.
+You are friendly, clear, slightly informal — like a strong senior teammate.
+No corporate tone. No fluff. No robotic phrasing.
 
-MODES (auto-detect):
-1. SPRINT — "спланируй спринт", "план на неделю" → tasks by day Mon-Fri, role each, flag what to skip
-2. DECOMPOSE — "разбей", "декомпозируй", "подзадачи" → 3-8 subtasks, role each, flag MVP skips
-3. BRIEF — "бриф" → Goal/Context/Requirements/Done, max 100 words, NO new tasks
-4. REPORT — "отчёт", "итоги" → summarize tasks, honest verdict, NO new tasks
-5. FOCUS — "стоит ли", "нужно ли" → YES/NO/LATER + one reason, NO new tasks
-6. CHAT — everything else → advice, max 3 sentences, NO new tasks
+STYLE:
+- Talk like a human, not a system
+- Short, clear sentences
+- Light friendliness is OK (1 soft phrase max per reply)
+- Never overexplain
+- Be decisive
+- If helpful, briefly acknowledge the user's situation in 1 short phrase (e.g. "понял, давай разложим", "смотри, тут просто", "да, логичный вопрос")
+- Use ONLY Cyrillic and Latin characters — never Chinese, Japanese, Korean or any other script
 
-TASK FORMAT: {id, title (verb-first ≤6 words), status:"todo", priority:"high"/"medium"/"low", role}
-- Create tasks ONLY in modes 1-2. Other modes: return tasks unchanged.
-- Max 20 tasks. Keep existing unless user removes.
-- High = blocks launch or loses money. Max 2-3 high per week.
+ROLES (for tasks):
+Frontend, Backend, Mobile, Design, Motion, Analytics, QA, DevOps, Content, PM
 
-TEACHING: always end "text" with:
+MODES (auto-detect intent):
+1. SPRINT → plan week Mon-Fri, tasks by day, role each, mark what to skip
+2. DECOMPOSE → 3-8 subtasks, role each, mark MVP skips
+3. BRIEF → Goal/Context/Requirements/Done (≤100 words, NO new tasks)
+4. REPORT → summarize + honest verdict (NO new tasks)
+5. FOCUS → YES/NO/LATER + 1 reason (NO new tasks)
+6. CHAT → advice ≤3 sentences (NO new tasks)
+
+TASK RULES:
+- Create/update tasks ONLY in SPRINT or DECOMPOSE
+- Max 20 tasks total. Keep existing unless user removes.
+- High priority = blocks launch or money loss. Max 2-3 high per week.
+
+TASK FORMAT:
+{id (short string), title (verb-first ≤6 words), status:"todo", priority:"high"/"medium"/"low", role}
+
+CONTEXT:
+You may receive current tasks. Use them as memory, not as strict truth.
+
+TEACHING:
+Always end "text" with:
 \n\n— [Term] — [one precise sentence definition in Russian]
 
-RESPONSE: valid JSON only, no markdown, no backticks:
-{"text":"...ending with — definition","tasks":[],"suggestions":["s1","s2","s3"],"mode":"chat"}
+STRICT OUTPUT — return ONLY valid JSON, nothing else:
+{"text":"...","tasks":[],"suggestions":["","",""],"mode":"chat"}
 
-suggestions: 3 items, ≤7 words, Russian, contextual, sound like the user. Always capitalize first letter.
-ALWAYS reply in Russian. Switch to English only if user writes multiple messages in English. Use ONLY Cyrillic and Latin characters.
+RULES:
+- No markdown, no backticks, no explanations outside JSON
+- suggestions: exactly 3 items, ≤7 words each, Russian, user-like tone, capitalize first letter
+- Always reply in Russian unless user consistently writes in English`;
 
-// Dynamic max_tokens by mode — faster and cheaper
+// ─── Mode detection ───────────────────────────────────────────────────────────
+
+function detectMode(messages) {
+  const last = messages
+    .filter(m => m.role === "user")
+    .pop()?.content?.toLowerCase() || "";
+
+  if (/(спринт|план на неделю|что делать на этой неделе|распиши неделю)/.test(last)) return "sprint";
+  if (/(разбей|декомпоз|подзадач|с чего начать|как делать)/.test(last)) return "decompose";
+  if (/(бриф|brief|сформулируй задачу)/.test(last)) return "brief";
+  if (/(отч[её]т|итоги|что сделано|результат)/.test(last)) return "report";
+  if (/(стоит ли|нужно ли|важно ли|имеет ли смысл)/.test(last)) return "focus";
+  return "chat";
+}
+
+// ─── Token limits by mode ─────────────────────────────────────────────────────
+
 const MAX_TOKENS_BY_MODE = {
   sprint: 1200,
   decompose: 1000,
@@ -34,36 +74,48 @@ const MAX_TOKENS_BY_MODE = {
   chat: 800,
 };
 
-// Detect mode from last user message to set tokens before API call
-function detectMode(messages) {
-  const last = messages.filter(m => m.role === "user").pop()?.content?.toLowerCase() || "";
-  if (/спланируй|план на неделю|sprint|что делать на этой неделе/.test(last)) return "sprint";
-  if (/разбей|декомпозируй|подзадачи|breakdown|с чего начать/.test(last)) return "decompose";
-  if (/бриф|brief/.test(last)) return "brief";
-  if (/отчёт|итоги|что сделано|report/.test(last)) return "report";
-  if (/стоит ли|нужно ли|важно ли|should i/.test(last)) return "focus";
-  return "chat";
+// ─── Response normalization ───────────────────────────────────────────────────
+
+function normalizeResponse(parsed, fallback) {
+  return {
+    text: typeof parsed.text === "string" && parsed.text.trim() ? parsed.text : "...",
+    tasks: Array.isArray(parsed.tasks) ? parsed.tasks.slice(0, 20) : fallback.tasks,
+    suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
+    mode: parsed.mode || fallback.mode || "chat",
+  };
 }
+
+// ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function POST(request) {
   try {
     const body = await request.json();
     const { messages, tasks = [] } = body;
 
-    const messagesForAPI = messages
+    // Filter and validate messages
+    const filteredMessages = messages
       .filter(m => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map(m => ({ role: m.role, content: m.content }));
 
-    if (!messagesForAPI.length) {
+    if (!filteredMessages.length) {
       return Response.json({ error: "No messages" }, { status: 400 });
     }
 
-    const mode = detectMode(messagesForAPI);
-    const maxTokens = MAX_TOKENS_BY_MODE[mode] || 500;
+    // Stabilize model behavior on long conversations (point 7)
+    const messagesForAPI = [
+      { role: "user", content: "Контекст: ты мой PM, помогай думать и упрощать." },
+      { role: "assistant", content: "Понял. Готов работать." },
+      ...filteredMessages,
+    ];
 
-    // Only include tasks in context if they exist — saves tokens
-    const system = tasks.length > 0
-      ? `${PM_SYSTEM}\n\nТекущие задачи: ${JSON.stringify(tasks)}`
+    const mode = detectMode(filteredMessages);
+    const maxTokens = MAX_TOKENS_BY_MODE[mode] || 800;
+
+    // Limit tasks to prevent bloat (point 4)
+    const trimmedTasks = tasks.slice(0, 20);
+
+    const system = trimmedTasks.length > 0
+      ? `${PM_SYSTEM}\n\nCurrent tasks:\n${JSON.stringify(trimmedTasks)}`
       : PM_SYSTEM;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -94,33 +146,27 @@ export async function POST(request) {
       .replace(/```\s*$/i, "")
       .trim();
 
+    // Parse JSON with fallbacks
     let parsed;
 
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // Try to find JSON object
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         try { parsed = JSON.parse(jsonMatch[0]); } catch {}
       }
     }
 
-    // Fallback: extract text field manually
     if (!parsed) {
       const textMatch = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
       const extractedText = textMatch
         ? textMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"')
         : raw;
-      parsed = { text: extractedText, tasks, suggestions: [], mode };
+      parsed = { text: extractedText, tasks: trimmedTasks, suggestions: [], mode };
     }
 
-    return Response.json({
-      text: parsed.text || "...",
-      tasks: Array.isArray(parsed.tasks) ? parsed.tasks : tasks,
-      suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
-      mode: parsed.mode || mode,
-    });
+    return Response.json(normalizeResponse(parsed, { tasks: trimmedTasks, mode }));
 
   } catch (error) {
     console.error("Route error:", error);
