@@ -31,7 +31,7 @@ const MAX_TOKENS_BY_MODE = {
   brief: 600,
   report: 800,
   focus: 300,
-  chat: 500,
+  chat: 800,
 };
 
 // Detect mode from last user message to set tokens before API call
