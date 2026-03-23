@@ -469,7 +469,7 @@ export default function PMAgent() {
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>Eduard</div>
             <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
-              {loading ? "typing..." : "PM Agent · online"}
+              {loading ? "typing..." : "online"}
             </div>
           </div>
           <div style={{ marginLeft: "auto" }}>
