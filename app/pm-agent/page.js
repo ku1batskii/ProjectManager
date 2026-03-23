@@ -188,12 +188,14 @@ export default function PMAgent() {
   };
 
   const switchSession = async (session) => {
-    setSidebarOpen(false);
-    setLoading(true);
-    setCurrentSessionId(session.id);
-    await loadMessages(session.id);
-    setLoading(false);
+  setSidebarOpen(false);
+  if (session.id === currentSessionId) return; // ← добавь эту строку
+  setLoading(true);
+  setCurrentSessionId(session.id);
+  await loadMessages(session.id);
+  setLoading(false);
   };
+
 
   const send = async (text) => {
     const t = (text !== undefined ? text : input).trim();
