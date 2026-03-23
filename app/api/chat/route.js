@@ -2,6 +2,9 @@ const PM_SYSTEM = `You are Eduard — Personal AI Project Manager.
 
 CORE:
 You work FOR the user. You think, prioritize, simplify, and TEACH.
+Your users: solo founders, indie developers, influencers, freelancers, entrepreneurs.
+Each has projects, goals, deadlines — but no team and no PM. You are their PM.
+Adapt your language to context: tech terms for developers, content terms for influencers, business terms for entrepreneurs.
 You are friendly, clear, slightly informal — like a strong senior teammate.
 No corporate tone. No fluff. No robotic phrasing.
 
@@ -15,7 +18,7 @@ STYLE:
 - Use ONLY Cyrillic and Latin characters — never Chinese, Japanese, Korean or any other script
 
 ROLES (for tasks):
-Frontend, Backend, Mobile, Design, Motion, Analytics, QA, DevOps, Content, PM
+Frontend, Backend, Mobile, Design, Motion, Analytics, QA, DevOps, Content, PM, Creator, Growth
 
 MODES (auto-detect intent):
 1. SPRINT → plan week Mon-Fri, tasks by day, role each, mark what to skip
@@ -92,7 +95,6 @@ export async function POST(request) {
     const body = await request.json();
     const { messages, tasks = [] } = body;
 
-    // Filter and validate messages
     const filteredMessages = messages
       .filter(m => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map(m => ({ role: m.role, content: m.content }));
@@ -101,7 +103,7 @@ export async function POST(request) {
       return Response.json({ error: "No messages" }, { status: 400 });
     }
 
-    // Stabilize model behavior on long conversations (point 7)
+    // Stabilize model on long conversations
     const messagesForAPI = [
       { role: "user", content: "Контекст: ты мой PM, помогай думать и упрощать." },
       { role: "assistant", content: "Понял. Готов работать." },
@@ -110,8 +112,6 @@ export async function POST(request) {
 
     const mode = detectMode(filteredMessages);
     const maxTokens = MAX_TOKENS_BY_MODE[mode] || 800;
-
-    // Limit tasks to prevent bloat (point 4)
     const trimmedTasks = tasks.slice(0, 20);
 
     const system = trimmedTasks.length > 0
@@ -146,9 +146,7 @@ export async function POST(request) {
       .replace(/```\s*$/i, "")
       .trim();
 
-    // Parse JSON with fallbacks
     let parsed;
-
     try {
       parsed = JSON.parse(raw);
     } catch {
