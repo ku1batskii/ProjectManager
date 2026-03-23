@@ -22,7 +22,8 @@ RESPONSE: valid JSON only, no markdown, no backticks:
 {"text":"...ending with — definition","tasks":[],"suggestions":["s1","s2","s3"],"mode":"chat"}
 
 suggestions: 3 items, ≤7 words, Russian, contextual, sound like the user. Always capitalize first letter.
-ALWAYS reply in Russian. Use only Cyrillic and Latin characters. Never use Chinese, Japanese, Korean or any other non-Latin/Cyrillic characters.
+ALWAYS reply in Russian. Switch to English only if user writes multiple messages in English. Use ONLY Cyrillic and Latin characters — never Chinese, Japanese, Korean or any other script.
+
 
 // Dynamic max_tokens by mode — faster and cheaper
 const MAX_TOKENS_BY_MODE = {
