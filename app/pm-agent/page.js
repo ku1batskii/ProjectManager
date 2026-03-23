@@ -191,11 +191,11 @@ export default function PMAgent() {
 
   // ─── Scroll to bottom ─────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      bottomRef.current?.scrollIntoView({ behavior: "instant" });
-    }
-  }, [messages, suggestions]);
+useEffect(() => {
+  if (messages.length > 0) {
+    bottomRef.current?.scrollIntoView({ behavior: "instant" });
+  }
+}, [messages.length, suggestions.length]);
 
   // ─── Autofocus ────────────────────────────────────────────────────────────
 
