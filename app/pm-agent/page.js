@@ -3,13 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
-
-const STORAGE_KEY = "pm_chat";
-const TASKS_KEY = "pm_tasks";
-
-const safeParse = (v, fallback) => {
-  try { const r = JSON.parse(v); return r || fallback; } catch { return fallback; }
-};
+import { supabase } from "../../lib/supabase";
 
 let msgCounter = 0;
 const createMsg = (role, content) => ({
@@ -17,15 +11,6 @@ const createMsg = (role, content) => ({
   role,
   content,
 });
-
-const sanitizeMsgs = (msgs) => {
-  if (!Array.isArray(msgs)) return [];
-  return msgs.map((m, i) => ({
-    id: m.id || `old_${i}`,
-    role: m.role || "assistant",
-    content: typeof m.content === "string" ? m.content : "",
-  })).filter(m => m.content);
-};
 
 const cleanText = (text) => {
   if (!text) return "";
@@ -75,48 +60,98 @@ const formatText = (text) => {
 };
 
 export default function PMAgent() {
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, userId } = useAuth();
   const [messages, setMessages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [tasksBadge, setTasksBadge] = useState(0);
+  const [sessions, setSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const bottomRef = useRef(null);
   const taRef = useRef(null);
 
+  // Load sessions from Supabase
+  const loadSessions = async (uid) => {
+    const { data } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false });
+    if (data) setSessions(data);
+    return data || [];
+  };
+
+  // Load messages for a session
+  const loadMessages = async (sessionId) => {
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+    if (data) {
+      const msgs = data.map(m => createMsg(m.role, m.content));
+      setMessages(msgs);
+    }
+  };
+
+  // Create new session
+  const createSession = async (uid, firstMessage = "New Chat") => {
+    const title = firstMessage.slice(0, 40);
+    const { data } = await supabase
+      .from("sessions")
+      .insert({ user_id: uid, title })
+      .select()
+      .single();
+    return data;
+  };
+
+  // Save message to Supabase
+  const saveMessageToDB = async (sessionId, role, content) => {
+    await supabase.from("messages").insert({ session_id: sessionId, role, content });
+  };
+
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return;
 
-    const savedMsgs = sanitizeMsgs(safeParse(localStorage.getItem(STORAGE_KEY), []));
-    const savedTasks = safeParse(localStorage.getItem(TASKS_KEY), []);
+    const init = async () => {
+      const existingSessions = await loadSessions(userId);
 
-    if (Array.isArray(savedTasks)) setTasks(savedTasks);
+      if (existingSessions.length > 0) {
+        const latest = existingSessions[0];
+        setCurrentSessionId(latest.id);
+        await loadMessages(latest.id);
+        setLoading(false);
+      } else {
+        // First time — create session and get greeting
+        try {
+          const res = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: [{ role: "user", content: "start" }], tasks: [] }),
+          });
+          const data = await res.json();
+          const greetingText = data.text || "Hey. What are we working on today?";
 
-    if (savedMsgs.length > 0) {
-      setMessages(savedMsgs);
-      setLoading(false);
-      return;
-    }
+          const session = await createSession(userId, "New Chat");
+          setCurrentSessionId(session.id);
+          await saveMessageToDB(session.id, "assistant", greetingText);
 
-    fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: [{ role: "user", content: "start" }], tasks: [] }),
-    })
-      .then(r => r.json())
-      .then(data => {
-        const initial = [createMsg("assistant", data.text || "Hey. What are we working on today?")];
-        setMessages(initial);
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(initial)); } catch {}
-        setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
-      })
-      .catch(() => {
-        setMessages([createMsg("assistant", "Hey. I'm Eduard — your PM. What's on the agenda?")]);
-      })
-      .finally(() => setLoading(false));
-  }, [isLoaded, isSignedIn]);
+          setMessages([createMsg("assistant", greetingText)]);
+          setSuggestions(data.suggestions || []);
+          await loadSessions(userId);
+        } catch {
+          setMessages([createMsg("assistant", "Hey. I'm Eduard — your PM. What's on the agenda?")]);
+        }
+        setLoading(false);
+      }
+    };
+
+    init();
+  }, [isLoaded, isSignedIn, userId]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -124,23 +159,62 @@ export default function PMAgent() {
     }
   }, [messages, suggestions]);
 
-  const saveMessages = (m) => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(m.slice(-50))); } catch {}
+  const startNewChat = async () => {
+    setSidebarOpen(false);
+    setMessages([]);
+    setSuggestions([]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [{ role: "user", content: "start" }], tasks: [] }),
+      });
+      const data = await res.json();
+      const greetingText = data.text || "Hey. What are we working on today?";
+
+      const session = await createSession(userId, "New Chat");
+      setCurrentSessionId(session.id);
+      await saveMessageToDB(session.id, "assistant", greetingText);
+
+      setMessages([createMsg("assistant", greetingText)]);
+      setSuggestions(data.suggestions || []);
+      await loadSessions(userId);
+    } catch {
+      setMessages([createMsg("assistant", "New session. What are we working on?")]);
+    }
+    setLoading(false);
   };
 
-  const saveTasks = (t) => {
-    try { localStorage.setItem(TASKS_KEY, JSON.stringify(t)); } catch {}
+  const switchSession = async (session) => {
+    setSidebarOpen(false);
+    setLoading(true);
+    setCurrentSessionId(session.id);
+    await loadMessages(session.id);
+    setLoading(false);
   };
 
   const send = async (text) => {
     const t = (text !== undefined ? text : input).trim();
     if (!t || loading) return;
 
+    let sessionId = currentSessionId;
+
+    // Create session if none
+    if (!sessionId) {
+      const session = await createSession(userId, t);
+      sessionId = session.id;
+      setCurrentSessionId(sessionId);
+      await loadSessions(userId);
+    }
+
     const userMsg = createMsg("user", t);
     const history = [...messages, userMsg].slice(-20);
 
     setMessages(history);
-    saveMessages(history);
+    await saveMessageToDB(sessionId, "user", t);
+
     setInput("");
     if (taRef.current) taRef.current.style.height = "44px";
     setLoading(true);
@@ -155,14 +229,21 @@ export default function PMAgent() {
       const data = await res.json();
       if (data.error) throw new Error(data.error);
 
-      const updated = [...history, createMsg("assistant", data.text || "...")];
+      const replyText = data.text || "...";
+      const updated = [...history, createMsg("assistant", replyText)];
       setMessages(updated);
-      saveMessages(updated);
+      await saveMessageToDB(sessionId, "assistant", replyText);
+
+      // Update session title with first user message
+      if (messages.length === 0) {
+        await supabase.from("sessions").update({ title: t.slice(0, 40) }).eq("id", sessionId);
+        await loadSessions(userId);
+      }
 
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
         const added = data.tasks.length - tasks.length;
         setTasks(data.tasks);
-        saveTasks(data.tasks);
+        try { localStorage.setItem("pm_tasks", JSON.stringify(data.tasks)); } catch {}
         if (added > 0) {
           setTasksBadge(added);
           setTimeout(() => setTasksBadge(0), 3000);
@@ -171,8 +252,7 @@ export default function PMAgent() {
 
       setSuggestions(Array.isArray(data.suggestions) ? data.suggestions.slice(0, 3) : []);
     } catch {
-      const updated = [...history, createMsg("assistant", "Error. Try again.")];
-      setMessages(updated);
+      setMessages([...history, createMsg("assistant", "Error. Try again.")]);
     }
 
     setLoading(false);
@@ -188,7 +268,6 @@ export default function PMAgent() {
     e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
   };
 
-  // Loading state
   if (!isLoaded) {
     return (
       <div style={{ height: "100dvh", background: "#0C0C14", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -197,7 +276,6 @@ export default function PMAgent() {
     );
   }
 
-  // Not signed in
   if (!isSignedIn) {
     return (
       <div style={{
@@ -223,9 +301,7 @@ export default function PMAgent() {
             color: "#fff", padding: "12px 28px",
             borderRadius: 10, fontSize: 14,
             cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
-          }}>
-            Sign In
-          </button>
+          }}>Sign In</button>
         </SignInButton>
       </div>
     );
@@ -234,139 +310,202 @@ export default function PMAgent() {
   return (
     <div style={{
       height: "100dvh", background: "#0C0C14",
-      display: "flex", flexDirection: "column",
+      display: "flex", position: "relative",
       fontFamily: "'Sora', 'Segoe UI', sans-serif",
-      color: "#E2E8F0", maxWidth: 680, margin: "0 auto",
-      overflow: "hidden", position: "relative",
+      color: "#E2E8F0", overflow: "hidden",
     }}>
-      {/* Header */}
-      <div style={{
-        background: "#0E0E1A", borderBottom: "1px solid #1E293B",
-        padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
-      }}>
-        <div style={{ position: "relative" }}>
-          <Avatar />
-          <div style={{
-            position: "absolute", bottom: 1, right: 1,
-            width: 8, height: 8, borderRadius: "50%",
-            background: loading ? "#F59E0B" : "#22C55E",
-            border: "2px solid #0E0E1A",
+      {/* Sidebar */}
+      {sidebarOpen && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 50,
+          display: "flex",
+        }}>
+          {/* Backdrop */}
+          <div onClick={() => setSidebarOpen(false)} style={{
+            position: "absolute", inset: 0, background: "#00000080",
           }} />
-        </div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Eduard</div>
-          <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
-            {loading ? "typing..." : "PM Agent · online"}
+          {/* Panel */}
+          <div style={{
+            position: "relative", zIndex: 1,
+            width: 280, height: "100%",
+            background: "#0E0E1A", borderRight: "1px solid #1E293B",
+            display: "flex", flexDirection: "column",
+          }}>
+            <div style={{
+              padding: "16px", borderBottom: "1px solid #1E293B",
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+            }}>
+              <span style={{ fontWeight: 700, fontSize: 13 }}>Chats</span>
+              <button onClick={startNewChat} style={{
+                background: "#1D4ED8", border: "none", color: "#fff",
+                padding: "6px 12px", borderRadius: 8, fontSize: 11,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>+ New</button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: 8 }}>
+              {sessions.map(s => (
+                <button key={s.id} onClick={() => switchSession(s)} style={{
+                  width: "100%", textAlign: "left",
+                  background: s.id === currentSessionId ? "#161622" : "transparent",
+                  border: s.id === currentSessionId ? "1px solid #1E293B" : "1px solid transparent",
+                  color: s.id === currentSessionId ? "#E2E8F0" : "#64748B",
+                  padding: "10px 12px", borderRadius: 8,
+                  fontSize: 12, cursor: "pointer",
+                  fontFamily: "inherit", marginBottom: 4,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {s.title || "New Chat"}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/taskboard" style={{
-            textDecoration: "none", border: "1px solid #1E293B",
-            color: "#64748B", padding: "5px 12px", borderRadius: 8,
-            fontSize: 11, display: "flex", alignItems: "center", gap: 6,
-          }}>
-            Tasks
-            {tasks.length > 0 && (
-              <span style={{
-                background: tasksBadge > 0 ? "#F59E0B" : "#334155",
-                color: tasksBadge > 0 ? "#0C0C14" : "#94A3B8",
-                borderRadius: 10, padding: "0 5px", fontSize: 9, fontWeight: 700,
-              }}>
-                {tasksBadge > 0 ? `+${tasksBadge}` : tasks.length}
-              </span>
-            )}
-          </Link>
-          <UserButton afterSignOutUrl="/pm-agent" />
-        </div>
-      </div>
+      )}
 
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-        {messages.map((m) => {
-          const isUser = m.role === "user";
-          return (
-            <div key={m.id} style={{
-              display: "flex", flexDirection: isUser ? "row-reverse" : "row",
-              alignItems: "flex-end", gap: 8,
+      {/* Main */}
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column",
+        maxWidth: 680, margin: "0 auto", width: "100%",
+      }}>
+        {/* Header */}
+        <div style={{
+          background: "#0E0E1A", borderBottom: "1px solid #1E293B",
+          padding: "12px 16px", display: "flex", alignItems: "center", gap: 12,
+        }}>
+          <button onClick={() => setSidebarOpen(true)} style={{
+            background: "transparent", border: "1px solid #1E293B",
+            color: "#64748B", width: 34, height: 34, borderRadius: 8,
+            cursor: "pointer", display: "flex", alignItems: "center",
+            justifyContent: "center", flexShrink: 0,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M3 6h18M3 12h18M3 18h18" stroke="#64748B" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <div style={{ position: "relative" }}>
+            <Avatar />
+            <div style={{
+              position: "absolute", bottom: 1, right: 1,
+              width: 8, height: 8, borderRadius: "50%",
+              background: loading ? "#F59E0B" : "#22C55E",
+              border: "2px solid #0E0E1A",
+            }} />
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Eduard</div>
+            <div style={{ fontSize: 11, color: loading ? "#F59E0B" : "#22C55E" }}>
+              {loading ? "typing..." : "PM Agent · online"}
+            </div>
+          </div>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+            <Link href="/taskboard" style={{
+              textDecoration: "none", border: "1px solid #1E293B",
+              color: "#64748B", padding: "5px 12px", borderRadius: 8,
+              fontSize: 11, display: "flex", alignItems: "center", gap: 6,
             }}>
-              {!isUser && <Avatar />}
-              <div style={{
-                maxWidth: "80%",
-                background: isUser ? "linear-gradient(135deg, #1D4ED8, #1E40AF)" : "#161622",
-                border: isUser ? "none" : "1px solid #1E293B",
-                borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                padding: "11px 15px", fontSize: 14, lineHeight: 1.65,
-                color: isUser ? "#EFF6FF" : "#CBD5E1",
+              Tasks
+              {tasks.length > 0 && (
+                <span style={{
+                  background: tasksBadge > 0 ? "#F59E0B" : "#334155",
+                  color: tasksBadge > 0 ? "#0C0C14" : "#94A3B8",
+                  borderRadius: 10, padding: "0 5px", fontSize: 9, fontWeight: 700,
+                }}>
+                  {tasksBadge > 0 ? `+${tasksBadge}` : tasks.length}
+                </span>
+              )}
+            </Link>
+            <UserButton afterSignOutUrl="/pm-agent" />
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+          {messages.map((m) => {
+            const isUser = m.role === "user";
+            return (
+              <div key={m.id} style={{
+                display: "flex", flexDirection: isUser ? "row-reverse" : "row",
+                alignItems: "flex-end", gap: 8,
               }}>
-                {isUser ? m.content : formatText(cleanText(m.content))}
+                {!isUser && <Avatar />}
+                <div style={{
+                  maxWidth: "80%",
+                  background: isUser ? "linear-gradient(135deg, #1D4ED8, #1E40AF)" : "#161622",
+                  border: isUser ? "none" : "1px solid #1E293B",
+                  borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                  padding: "11px 15px", fontSize: 14, lineHeight: 1.65,
+                  color: isUser ? "#EFF6FF" : "#CBD5E1",
+                }}>
+                  {isUser ? m.content : formatText(cleanText(m.content))}
+                </div>
+              </div>
+            );
+          })}
+
+          {loading && (
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+              <Avatar />
+              <div style={{ background: "#161622", border: "1px solid #1E293B", borderRadius: "18px 18px 18px 4px", padding: "13px 18px" }}>
+                <Dots />
               </div>
             </div>
-          );
-        })}
+          )}
 
-        {loading && (
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
-            <Avatar />
-            <div style={{ background: "#161622", border: "1px solid #1E293B", borderRadius: "18px 18px 18px 4px", padding: "13px 18px" }}>
-              <Dots />
+          {suggestions.length > 0 && !loading && (
+            <div style={{ paddingLeft: 42, display: "flex", flexDirection: "column", gap: 7, marginTop: 2 }}>
+              {suggestions.map((s, i) => (
+                <button key={i} onClick={() => send(s)} style={{
+                  alignSelf: "flex-start", background: "transparent",
+                  border: "1px solid #1E293B", color: "#64748B",
+                  padding: "8px 15px", borderRadius: 20, fontSize: 13,
+                  cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#334155"; e.currentTarget.style.color = "#94A3B8"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "#1E293B"; e.currentTarget.style.color = "#64748B"; }}
+                >{s}</button>
+              ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {suggestions.length > 0 && !loading && (
-          <div style={{ paddingLeft: 42, display: "flex", flexDirection: "column", gap: 7, marginTop: 2 }}>
-            {suggestions.map((s, i) => (
-              <button key={i} onClick={() => send(s)} style={{
-                alignSelf: "flex-start", background: "transparent",
-                border: "1px solid #1E293B", color: "#64748B",
-                padding: "8px 15px", borderRadius: 20, fontSize: 13,
-                cursor: "pointer", fontFamily: "inherit", textAlign: "left",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "#334155"; e.currentTarget.style.color = "#94A3B8"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1E293B"; e.currentTarget.style.color = "#64748B"; }}
-              >{s}</button>
-            ))}
-          </div>
-        )}
+          <div ref={bottomRef} />
+        </div>
 
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div style={{
-        background: "#0E0E1A", borderTop: "1px solid #1E293B",
-        padding: "12px 16px 24px", display: "flex", alignItems: "flex-end", gap: 10,
-      }}>
-        <textarea
-          ref={taRef}
-          value={input}
-          onChange={handleInput}
-          onKeyDown={handleKey}
-          placeholder="Tell me what's going on..."
-          disabled={loading}
-          style={{
-            flex: 1, background: "#161622", border: "1px solid #1E293B",
-            borderRadius: 22, padding: "11px 16px", color: "#E2E8F0",
-            fontSize: 16, fontFamily: "inherit", outline: "none",
-            resize: "none", lineHeight: 1.5, height: 44, maxHeight: 140, overflow: "auto",
-          }}
-          onFocus={e => e.target.style.borderColor = "#334155"}
-          onBlur={e => e.target.style.borderColor = "#1E293B"}
-        />
-        <button onClick={() => send()} disabled={loading || !input.trim()} style={{
-          width: 44, height: 44, borderRadius: "50%",
-          background: input.trim() && !loading ? "#1D4ED8" : "#161622",
-          border: "1px solid " + (input.trim() && !loading ? "#1D4ED8" : "#1E293B"),
-          cursor: input.trim() && !loading ? "pointer" : "default",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
+        {/* Input */}
+        <div style={{
+          background: "#0E0E1A", borderTop: "1px solid #1E293B",
+          padding: "12px 16px 24px", display: "flex", alignItems: "flex-end", gap: 10,
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12H19M19 12L12 5M19 12L12 19"
-              stroke={input.trim() && !loading ? "#fff" : "#334155"}
-              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+          <textarea
+            ref={taRef}
+            value={input}
+            onChange={handleInput}
+            onKeyDown={handleKey}
+            placeholder="Tell Eduard what's happening..."
+            disabled={loading}
+            style={{
+              flex: 1, background: "#161622", border: "1px solid #1E293B",
+              borderRadius: 22, padding: "11px 16px", color: "#E2E8F0",
+              fontSize: 16, fontFamily: "inherit", outline: "none",
+              resize: "none", lineHeight: 1.5, height: 44, maxHeight: 140, overflow: "auto",
+            }}
+            onFocus={e => e.target.style.borderColor = "#334155"}
+            onBlur={e => e.target.style.borderColor = "#1E293B"}
+          />
+          <button onClick={() => send()} disabled={loading || !input.trim()} style={{
+            width: 44, height: 44, borderRadius: "50%",
+            background: input.trim() && !loading ? "#1D4ED8" : "#161622",
+            border: "1px solid " + (input.trim() && !loading ? "#1D4ED8" : "#1E293B"),
+            cursor: input.trim() && !loading ? "pointer" : "default",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12H19M19 12L12 5M19 12L12 19"
+                stroke={input.trim() && !loading ? "#fff" : "#334155"}
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <style>{`
