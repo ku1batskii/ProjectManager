@@ -215,12 +215,29 @@ export default function LandingPage() {
             <span style={{ fontWeight: 700, fontSize: 14, letterSpacing: -0.3 }}>PROJECTME</span>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-            {/* Language toggle */}
-            <div style={{ display: "flex", gap: 4 }}>
-              <button className={`lang-btn ${lang === "en" ? "active" : ""}`} onClick={() => setLang("en")}>EN</button>
-              <button className={`lang-btn ${lang === "ru" ? "active" : ""}`} onClick={() => setLang("ru")}>RU</button>
+            {/* Language toggle — pill style */}
+            <div style={{
+              display: "flex",
+              background: "#0E0E1A",
+              border: "1px solid #1E293B",
+              borderRadius: 8, padding: 2,
+            }}>
+              <button onClick={() => setLang("en")} style={{
+                background: lang === "en" ? "#161622" : "transparent",
+                border: "none", color: lang === "en" ? "#E2E8F0" : "#475569",
+                padding: "4px 10px", borderRadius: 6,
+                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                fontFamily: "inherit", letterSpacing: 1, transition: "all 0.15s",
+              }}>EN</button>
+              <button onClick={() => setLang("ru")} style={{
+                background: lang === "ru" ? "#161622" : "transparent",
+                border: "none", color: lang === "ru" ? "#E2E8F0" : "#475569",
+                padding: "4px 10px", borderRadius: 6,
+                fontSize: 11, fontWeight: 700, cursor: "pointer",
+                fontFamily: "inherit", letterSpacing: 1, transition: "all 0.15s",
+              }}>RU</button>
             </div>
-            <Link href="/pm-agent" className="cta-btn" style={{ padding: "8px 20px", fontSize: 13 }}>
+            <Link href="/pm-agent" className="cta-btn" style={{ padding: "8px 20px", fontSize: 13, whiteSpace: "nowrap" }}>
               {t.nav_cta}
             </Link>
           </div>
