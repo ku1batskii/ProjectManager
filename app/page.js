@@ -202,7 +202,7 @@ export default function LandingPage() {
       {/* Nav */}
       <div style={{ position: "sticky", top: 0, zIndex: 100, background: "#0C0C14CC", backdropFilter: "blur(12px)", borderBottom: "1px solid #1E293B" }}>
         <nav className="nav-inner" style={{
-          padding: "18px 24px",
+          padding: "24px",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           maxWidth: 1100, margin: "0 auto", gap: 16,
         }}>
@@ -241,7 +241,7 @@ export default function LandingPage() {
               }}>RU</button>
             </div>
             <Link href="/pm-agent" className="cta-btn" style={{
-              padding: "12px 22px", fontSize: 13,
+              padding: "14px 24px", fontSize: 13,
               whiteSpace: "nowrap", borderRadius: 10,
             }}>
               {t.nav_cta}
