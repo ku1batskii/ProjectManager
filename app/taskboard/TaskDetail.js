@@ -708,6 +708,10 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
   }
 
   input[type="date"]::-webkit-date-and-time-value {
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
   }
 
