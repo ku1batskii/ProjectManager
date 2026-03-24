@@ -89,7 +89,7 @@ function inferStage(messages) {
 
 function detectMode(messages) {
   const last = messages.filter(m => m.role === "user").pop()?.content?.toLowerCase() || "";
-  if (/(разбей|декомпоз|подзадач|с чего начать|как делать|break down|decompose)/.test(last)) return "decompose";
+  if (/(разбей|декомпоз|подзадач|с чего начать|как делать|break down|decompose|todo|таск|задач|создай задач|добавь задач|список задач|to.do)/.test(last)) return "decompose";
   if (/(спринт|план на неделю|распиши неделю|sprint|week plan)/.test(last))                  return "sprint";
   if (/(бриф|brief|сформулируй задачу)/.test(last))                                           return "brief";
   if (/(отч[её]т|итоги|что сделано|результат|report)/.test(last))                             return "report";
