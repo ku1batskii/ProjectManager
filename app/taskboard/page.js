@@ -955,9 +955,6 @@ export default function TaskBoardPage() {
 
           <div>
             <div style={{ fontWeight: 700, fontSize: 15 }}>Task Tracker</div>
-            <div style={{ fontSize: 11, color: "#64748B" }}>
-              AI PM execution board
-            </div>
           </div>
 
           <div
