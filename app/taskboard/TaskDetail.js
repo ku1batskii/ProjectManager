@@ -692,34 +692,39 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           </div>
         </div>
 
-        <style>{`
-          *, *::before, *::after {
-            box-sizing: border-box;
-          }
+<style>{`
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
 
-          input, textarea, select, button {
-            max-width: 100%;
-          }
+  input, textarea, select, button {
+    max-width: 100%;
+  }
 
-          input[type="date"] {
-          -webkit-appearance: none;
-          appearance: none;
-          }
+  input[type="date"] {
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: center;
+  }
 
-          input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(.7);
-            cursor: pointer;
-          }
+  input[type="date"]::-webkit-date-and-time-value {
+    text-align: center;
+  }
 
-          textarea::placeholder, input::placeholder {
-            color: #475569;
-          }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(.7);
+    cursor: pointer;
+  }
 
-          select option {
-            background: #161622;
-            color: #E2E8F0;
-          }
-        `}</style>
+  textarea::placeholder, input::placeholder {
+    color: #475569;
+  }
+
+  select option {
+    background: #161622;
+    color: #E2E8F0;
+  }
+`}</style>
       </div>
     </div>
   );
