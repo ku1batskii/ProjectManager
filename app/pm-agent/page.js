@@ -130,7 +130,14 @@ export default function PMAgent() {
   const { user } = useUser();
 
   const [messages, setMessages] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState(() => {
+  try {
+    const saved = localStorage.getItem("pm_tasks");
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+  });
   const [suggestions, setSuggestions] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
