@@ -358,9 +358,9 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               />
             </div>
 
-            <div>
-              <FieldLabel>Progress</FieldLabel>
-              <SurfaceInput style={{ padding: "11px 12px" }}>
+            <div style={{ minWidth: 0 }}>
+            <FieldLabel>Progress</FieldLabel>
+            <SurfaceInput style={{ padding: "11px 12px", minHeight: 74 }}>
                 <div
                   style={{
                     display: "flex",
