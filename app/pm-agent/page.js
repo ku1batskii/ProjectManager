@@ -17,9 +17,10 @@ const cleanText = (text) => {
   if (!text) return "";
   try {
     const parsed = JSON.parse(text);
-    return parsed.text || text;
+    const t = parsed.text || text;
+    return t.replace(/\\n/g, "\n");
   } catch {
-    return text.trim();
+    return text.trim().replace(/\\n/g, "\n");
   }
 };
 
