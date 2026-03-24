@@ -31,10 +31,11 @@ BRIEF: Goal/Context/Requirements/Done ≤100 words. tasks=[].
 REPORT: honest summary + verdict. tasks=[].
 FOCUS: YES/NO/LATER + 1 reason. tasks=[].
 
-CHAT (strict 3-line format):
-- Line 1: what user is doing wrong OR reframe their goal in 1 sentence
+CHAT (strict format — exactly 3 lines, then teaching on new paragraph):
+- Line 1: what user is doing wrong OR reframe their goal
 - Line 2: what to do
-- Line 3: next concrete action they can take NOW
+- Line 3: next concrete action NOW
+Then: \n\n— [Term] — [definition]
 tasks=[].
 
 TASK FORMAT: {id, title (verb-first, result-oriented ≤6 words), status:"todo", priority:"high"/"medium"/"low", role}
@@ -44,7 +45,7 @@ NOT "сделать лендинг" → "опубликовать лендинг
 SUGGESTIONS: exactly 3, ≤7 words, Russian, capitalize. Actionable ≤10 min. Never generic, never repeat reply.
 Priority: 1) clarify goal 2) cut scope 3) next step now.
 
-TEACHING: end "text" with \n\n— [Term] — [1 practical Russian sentence, helps act immediately]
+TEACHING: always end "text" with \n\n— [Term] — [1 practical Russian sentence, helps act immediately]
 Rotate: PM, IT, metrics, career. Never repeat same term.
 
 Reply in Russian unless user writes English consistently.
@@ -53,7 +54,7 @@ Write without spelling errors. Cyrillic and Latin only.
 
 // ─── System Builder ───────────────────────────────────────────────────────────
 
-const buildSystem = (tasks, mode, context) => {
+const buildSystem = (tasks, mode, context, strict = false) => {
   const parts = [CORE, `\nCurrent mode: ${mode}`];
 
   if (context && Object.keys(context).length > 0) {
@@ -70,21 +71,43 @@ const buildSystem = (tasks, mode, context) => {
     parts.push(`\nCurrent tasks:\n${JSON.stringify(tasks)}`);
   }
 
+  if (strict) {
+    parts.push("\nReturn ONLY JSON. No text outside JSON.");
+  }
+
   return parts.join("\n");
 };
+
+// ─── Stage Inference ──────────────────────────────────────────────────────────
+
+function inferStage(messages) {
+  const text = messages.map(m => m.content).join(" ").toLowerCase();
+  if (/(идея|idea|только думаю|хочу сделать|планирую|пока нет)/.test(text)) return "idea";
+  if (/(нет пользователей|ищу пользователей|тестирую|проверяю|гипотеза)/.test(text)) return "validation";
+  if (/(есть пользователи|платящие|растём|масштаб|метрики)/.test(text)) return "growth";
+  return "mvp";
+}
 
 // ─── Enforce ──────────────────────────────────────────────────────────────────
 
 function enforce(parsed, mode) {
-  // Truncate text to 500 chars max
-  if (typeof parsed.text === "string") {
-    parsed.text = parsed.text.slice(0, 500);
+  // Empty text protection
+  if (!parsed.text || parsed.text.trim().length < 10) {
+    parsed.text = "Сформулируй цель чётко и начни с одного действия.\nСделай это сейчас.\nОпредели первый шаг.\n\n— MVP — минимальный продукт, который решает одну проблему одного пользователя достаточно хорошо, чтобы за него заплатили.";
   }
 
-  // CHAT: max 3 meaningful lines
+  // Truncate total text
+  if (typeof parsed.text === "string") {
+    parsed.text = parsed.text.slice(0, 600);
+  }
+
+  // CHAT: protect teaching block, limit main body to 3 lines
   if (mode === "chat" && typeof parsed.text === "string") {
-    const lines = parsed.text.split("\n").filter(l => l.trim()).slice(0, 4);
-    parsed.text = lines.join("\n");
+    const parts = parsed.text.split("\n\n");
+    const main = parts[0] || "";
+    const teaching = parts.slice(1).join("\n\n");
+    const lines = main.split("\n").filter(l => l.trim()).slice(0, 3);
+    parsed.text = lines.join("\n") + (teaching ? "\n\n" + teaching : "");
   }
 
   // Force empty tasks for non-task modes
@@ -92,28 +115,34 @@ function enforce(parsed, mode) {
     parsed.tasks = [];
   }
 
-  // Validate task shape
+  // Validate and normalize task shape
   if (Array.isArray(parsed.tasks)) {
     parsed.tasks = parsed.tasks.map((t, i) => ({
-      id: typeof t.id === "string" && t.id ? t.id : `t${i + 1}`,
+      id: typeof t.id === "string" && t.id.trim() ? t.id : `t_${Date.now()}_${i}`,
       title: (typeof t.title === "string" ? t.title : "task").slice(0, 60),
       status: "todo",
-      priority: ["high", "medium", "low"].includes(t.priority) ? t.priority : "medium",
-      role: typeof t.role === "string" && t.role ? t.role : "PM",
+      priority: ["high", "medium", "low"].includes(t.priority)
+        ? t.priority
+        : (i < 2 ? "high" : "medium"),
+      role: typeof t.role === "string" && t.role.trim() ? t.role : "PM",
     })).slice(0, 20);
   }
 
   return parsed;
 }
 
-// ─── Suggestions Filter ───────────────────────────────────────────────────────
+// ─── Suggestions ──────────────────────────────────────────────────────────────
 
-function fixSuggestions(arr, mode) {
+function normalizeSuggestion(s) {
+  if (!s || typeof s !== "string") return null;
+  const trimmed = s.trim().split(" ").slice(0, 7).join(" ");
+  if (trimmed.length < 3) return null;
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+function fixSuggestions(arr) {
   if (!Array.isArray(arr) || arr.length !== 3) return null;
-  const fixed = arr.slice(0, 3).map(s => {
-    if (typeof s !== "string" || !s.trim()) return null;
-    return s.trim().split(" ").slice(0, 7).join(" ");
-  });
+  const fixed = arr.map(normalizeSuggestion);
   return fixed.every(Boolean) ? fixed : null;
 }
 
@@ -128,6 +157,16 @@ function fallbackSuggestions(mode) {
   return map[mode] || ["Уточнить цель проекта", "Сократить объём работы", "Сделать первый шаг сейчас"];
 }
 
+// ─── Scoring ──────────────────────────────────────────────────────────────────
+
+function score(output) {
+  let s = 0;
+  if (typeof output.text === "string" && output.text.length >= 10 && output.text.length <= 500) s++;
+  if (Array.isArray(output.tasks) && output.tasks.length <= 20) s++;
+  if (Array.isArray(output.suggestions) && output.suggestions.length === 3) s++;
+  return s;
+}
+
 // ─── Mode Detection ───────────────────────────────────────────────────────────
 
 function detectMode(messages) {
@@ -140,26 +179,21 @@ function detectMode(messages) {
   return "chat";
 }
 
-// ─── Token & Temperature ──────────────────────────────────────────────────────
+// ─── Tokens & Temperature ─────────────────────────────────────────────────────
 
-const MAX_TOKENS   = { sprint:1200, decompose:1000, brief:600, report:800, focus:300, chat:800 };
-const TEMPERATURE  = { sprint:0.2,  decompose:0.2,  brief:0.3, report:0.3, focus:0.2, chat:0.4 };
+const MAX_TOKENS  = { sprint:1200, decompose:1000, brief:600, report:800, focus:300, chat:800 };
+const TEMPERATURE = { sprint:0.2,  decompose:0.2,  brief:0.3, report:0.3, focus:0.2, chat:0.4 };
 
-// ─── Normalize + Enforce ──────────────────────────────────────────────────────
+// ─── Normalize ────────────────────────────────────────────────────────────────
 
 function normalize(parsed, fallbackTasks, mode) {
+  const enforced = enforce(parsed, mode);
   const needsTasks = mode === "sprint" || mode === "decompose";
 
-  const enforced = enforce(parsed, mode);
-
-  const suggestions =
-    fixSuggestions(enforced.suggestions, mode) ||
-    fallbackSuggestions(mode);
-
   return {
-    text: typeof enforced.text === "string" && enforced.text.trim() ? enforced.text : "...",
+    text: enforced.text,
     tasks: Array.isArray(enforced.tasks) ? enforced.tasks : (needsTasks ? [] : fallbackTasks),
-    suggestions,
+    suggestions: fixSuggestions(enforced.suggestions) || fallbackSuggestions(mode),
     mode,
   };
 }
@@ -221,15 +255,26 @@ export async function POST(request) {
     const maxTokens = MAX_TOKENS[mode] || 800;
     const temp = TEMPERATURE[mode] || 0.3;
     const trimmedTasks = tasks.slice(0, 20);
+
+    // Auto-infer stage if not provided
+    if (!context.stage) context.stage = inferStage(filtered);
+
     const system = buildSystem(trimmedTasks, mode, context);
+    const strictSystem = buildSystem(trimmedTasks, mode, context, true);
 
     // Attempt 1
     let raw = await callAnthropic(system, filtered, maxTokens, temp);
     let parsed = tryParse(raw);
 
+    // Score check — retry if output is weak
+    if (parsed) {
+      const normalized = normalize(parsed, trimmedTasks, mode);
+      if (score(normalized) < 2) parsed = null;
+    }
+
     // Attempt 2 — strict fix
     if (!parsed) {
-      raw = await callAnthropic(system, [
+      raw = await callAnthropic(strictSystem, [
         ...filtered,
         { role: "assistant", content: raw },
         { role: "user", content: "Invalid JSON. Return ONLY valid JSON now." },
@@ -239,7 +284,7 @@ export async function POST(request) {
 
     // Attempt 3 — minimal JSON
     if (!parsed) {
-      raw = await callAnthropic(system, [
+      raw = await callAnthropic(strictSystem, [
         ...filtered,
         { role: "assistant", content: raw },
         { role: "user", content: "Return minimal valid JSON: {text, tasks, suggestions, mode}." },
