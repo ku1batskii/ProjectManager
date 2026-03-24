@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const CONTENT = {
   en: {
-    nav_cta: "Get your first plan →",
+    nav_cta: "Get your plan →",
     badge: "Early access · $4.99/mo",
     hero_title: "Stop guessing\nwhat to do next.",
     hero_sub: "Eduard turns your chaos into a clear execution plan in 60 seconds. AI Project Manager for solo builders.",
@@ -14,7 +14,7 @@ const CONTENT = {
       "Any idea → actionable subtasks",
       "Focus filter: what NOT to do",
     ],
-    hero_cta: "Get your first plan →",
+    hero_cta: "Get your plan →",
     hero_secondary: "See how it works",
     social_proof: "Used by 200+ solo founders this week",
 
@@ -25,8 +25,8 @@ const CONTENT = {
       { n: "3", title: "You get a clear plan", desc: "Actionable tasks with roles and priorities. Ready to execute. No extra thinking required." },
     ],
 
-    talk_label: "HOW TO TALK TO EDUARD",
-    talk_desc: "Eduard understands natural language — just write like you'd message a teammate. Here are the triggers:",
+    talk_label: "YOU DRIVE. EDUARD STRUCTURES.",
+    talk_desc: "Eduard won't do the thinking for you — and that's the point. You set the direction, he turns it into a clear plan. The more honest you are about your situation, the sharper the output.",
     talk_commands: [
       { cmd: "спланируй спринт", label: "Sprint", desc: "Get a full week plan broken by day with roles and priorities" },
       { cmd: "разбей задачу", label: "Decompose", desc: "Break any goal into 3–8 subtasks in execution order" },
@@ -35,7 +35,7 @@ const CONTENT = {
       { cmd: "дай отчёт", label: "Report", desc: "Honest summary of what's done, blocked, and next" },
       { cmd: "любой вопрос", label: "Chat", desc: "PM advice, strategy, anti-overthinking — straight answer in 3 lines" },
     ],
-    talk_tip: "💡 Tip: The more context you give, the sharper the answer. Tell Eduard your project, audience, and current stage.",
+    talk_tip: "💡 Don't wait for the perfect question. Just describe where you're stuck — Eduard will figure out what you need.",
 
     for_who_label: "BUILT FOR",
     for_who: [
@@ -64,7 +64,7 @@ const CONTENT = {
     pricing_price: "$4.99",
     pricing_period: "per month · cancel anytime",
     pricing_compare: "Less than 1 hour of a freelance PM — but replaces one completely.",
-    pricing_cta: "Get your first plan →",
+    pricing_cta: "Get your plan →",
     pricing_features: [
       "Unlimited conversations",
       "Sprint planning & task decomposition",
@@ -92,7 +92,7 @@ const CONTENT = {
   },
 
   ru: {
-    nav_cta: "Получить первый план →",
+    nav_cta: "Получить план →",
     badge: "Ранний доступ · $4.99/мес",
     hero_title: "Хватит гадать\nчто делать дальше.",
     hero_sub: "Эдуард превращает твой хаос в чёткий план действий за 60 секунд. AI Project Manager для соло-строителей.",
@@ -101,7 +101,7 @@ const CONTENT = {
       "Любая идея → конкретные подзадачи",
       "Фокус-фильтр: что делать не нужно",
     ],
-    hero_cta: "Получить первый план →",
+    hero_cta: "Получить план →",
     hero_secondary: "Как это работает",
     social_proof: "Используют 200+ соло-фаундеров на этой неделе",
 
@@ -112,8 +112,8 @@ const CONTENT = {
       { n: "3", title: "Ты получаешь план", desc: "Конкретные задачи, роли, приоритеты. Готово к выполнению. Думать не нужно." },
     ],
 
-    talk_label: "КАК ГОВОРИТЬ С ЭДУАРДОМ",
-    talk_desc: "Эдуард понимает обычный текст — пиши как коллеге. Вот ключевые команды:",
+    talk_label: "ТЫ ЗАДАЁШЬ НАПРАВЛЕНИЕ. ЭДУАРД СТРУКТУРИРУЕТ.",
+    talk_desc: "Эдуард не думает за тебя — и это главное. Ты говоришь что происходит, он превращает это в план. Чем честнее ты описываешь ситуацию, тем точнее ответ.",
     talk_commands: [
       { cmd: "спланируй спринт", label: "Спринт", desc: "Получи план на неделю по дням с ролями и приоритетами" },
       { cmd: "разбей задачу", label: "Декомпозиция", desc: "Разбей любую цель на 3–8 подзадач в порядке выполнения" },
@@ -122,7 +122,7 @@ const CONTENT = {
       { cmd: "дай отчёт", label: "Отчёт", desc: "Честная сводка: что сделано, что застряло, что дальше" },
       { cmd: "любой вопрос", label: "Чат", desc: "PM-совет, стратегия, антипрокрастинация — прямой ответ в 3 строки" },
     ],
-    talk_tip: "💡 Совет: чем больше контекста ты даёшь — тем точнее ответ. Расскажи Эдуарду о проекте, аудитории и текущей стадии.",
+    talk_tip: "💡 Не жди идеального вопроса. Просто опиши где застрял — Эдуард сам разберётся что тебе нужно.",
 
     for_who_label: "ДЛЯ КОГО",
     for_who: [
