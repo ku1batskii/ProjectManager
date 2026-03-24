@@ -8,6 +8,7 @@ OUTPUT: return ONLY valid JSON, no markdown, no backticks:
 {"text":"...","tasks":[],"suggestions":["","",""],"mode":"chat"}
 
 Always prioritize decisions using PROJECT context if provided.
+Avoid repeating previous answers. Build on conversation.
 
 DECISION (in order):
 1. Blocks launch → high
@@ -31,11 +32,11 @@ BRIEF: Goal/Context/Requirements/Done ≤100 words. tasks=[].
 REPORT: honest summary + verdict. tasks=[].
 FOCUS: YES/NO/LATER + 1 reason. tasks=[].
 
-CHAT (strict format — exactly 3 lines, then teaching on new paragraph):
+CHAT (strict format):
 - Line 1: what user is doing wrong OR reframe their goal
 - Line 2: what to do
 - Line 3: next concrete action NOW
-Then: \n\n— [Term] — [definition]
+Then on new paragraph: \n\n— [Term] — [definition]
 tasks=[].
 
 TASK FORMAT: {id, title (verb-first, result-oriented ≤6 words), status:"todo", priority:"high"/"medium"/"low", role}
@@ -82,10 +83,33 @@ const buildSystem = (tasks, mode, context, strict = false) => {
 
 function inferStage(messages) {
   const text = messages.map(m => m.content).join(" ").toLowerCase();
-  if (/(идея|idea|только думаю|хочу сделать|планирую|пока нет)/.test(text)) return "idea";
-  if (/(нет пользователей|ищу пользователей|тестирую|проверяю|гипотеза)/.test(text)) return "validation";
-  if (/(есть пользователи|платящие|растём|масштаб|метрики)/.test(text)) return "growth";
-  return "mvp";
+  if (/(идея|idea|хочу сделать|планирую|только думаю|пока нет продукта)/.test(text))      return "idea";
+  if (/(тестирую|гипотеза|нет пользователей|ищу пользователей|проверяю спрос)/.test(text)) return "validation";
+  if (/(растём|масштаб|оптимизация метрик|тысячи пользователей)/.test(text))               return "growth";
+  return "mvp"; // safe default
+}
+
+// ─── Scoring (on raw parsed, before normalize) ────────────────────────────────
+
+function score(output) {
+  let s = 0;
+  if (typeof output.text === "string" && output.text.trim().length >= 10) s++;
+  if (Array.isArray(output.tasks) && output.tasks.length <= 20) s++;
+  if (Array.isArray(output.suggestions) && output.suggestions.length === 3) s++;
+  return s;
+}
+
+// ─── Mode Validation ──────────────────────────────────────────────────────────
+
+function validateMode(output, mode) {
+  if (mode === "chat") {
+    const lines = (output.text || "").split("\n").filter(l => l.trim());
+    return lines.length >= 3;
+  }
+  if (mode === "sprint" || mode === "decompose") {
+    return Array.isArray(output.tasks) && output.tasks.length > 0;
+  }
+  return true;
 }
 
 // ─── Enforce ──────────────────────────────────────────────────────────────────
@@ -96,16 +120,16 @@ function enforce(parsed, mode) {
     parsed.text = "Сформулируй цель чётко и начни с одного действия.\nСделай это сейчас.\nОпредели первый шаг.\n\n— MVP — минимальный продукт, который решает одну проблему одного пользователя достаточно хорошо, чтобы за него заплатили.";
   }
 
-  // Truncate total text
+  // Truncate total
   if (typeof parsed.text === "string") {
     parsed.text = parsed.text.slice(0, 600);
   }
 
-  // CHAT: protect teaching block, limit main body to 3 lines
+  // CHAT: keep only last teaching block, limit main to 3 lines
   if (mode === "chat" && typeof parsed.text === "string") {
     const parts = parsed.text.split("\n\n");
     const main = parts[0] || "";
-    const teaching = parts.slice(1).join("\n\n");
+    const teaching = parts.length > 1 ? parts[parts.length - 1] : "";
     const lines = main.split("\n").filter(l => l.trim()).slice(0, 3);
     parsed.text = lines.join("\n") + (teaching ? "\n\n" + teaching : "");
   }
@@ -125,13 +149,19 @@ function enforce(parsed, mode) {
         ? t.priority
         : (i < 2 ? "high" : "medium"),
       role: typeof t.role === "string" && t.role.trim() ? t.role : "PM",
-    })).slice(0, 20);
+    })).slice(0, mode === "sprint" ? 15 : 20); // Sprint: max 5 days × 3 tasks
   }
 
   return parsed;
 }
 
 // ─── Suggestions ──────────────────────────────────────────────────────────────
+
+const WEAK_WORDS = ["улучшить", "оптимизировать", "проанализировать", "изучить", "рассмотреть"];
+
+function isWeakSuggestion(s) {
+  return WEAK_WORDS.some(w => s.toLowerCase().includes(w));
+}
 
 function normalizeSuggestion(s) {
   if (!s || typeof s !== "string") return null;
@@ -143,7 +173,9 @@ function normalizeSuggestion(s) {
 function fixSuggestions(arr) {
   if (!Array.isArray(arr) || arr.length !== 3) return null;
   const fixed = arr.map(normalizeSuggestion);
-  return fixed.every(Boolean) ? fixed : null;
+  if (!fixed.every(Boolean)) return null;
+  if (fixed.some(isWeakSuggestion)) return null;
+  return fixed;
 }
 
 function fallbackSuggestions(mode) {
@@ -155,16 +187,6 @@ function fallbackSuggestions(mode) {
     report:    ["Пересмотреть приоритеты", "Убрать лишние задачи", "Запустить следующий шаг"],
   };
   return map[mode] || ["Уточнить цель проекта", "Сократить объём работы", "Сделать первый шаг сейчас"];
-}
-
-// ─── Scoring ──────────────────────────────────────────────────────────────────
-
-function score(output) {
-  let s = 0;
-  if (typeof output.text === "string" && output.text.length >= 10 && output.text.length <= 500) s++;
-  if (Array.isArray(output.tasks) && output.tasks.length <= 20) s++;
-  if (Array.isArray(output.suggestions) && output.suggestions.length === 3) s++;
-  return s;
 }
 
 // ─── Mode Detection ───────────────────────────────────────────────────────────
@@ -259,33 +281,39 @@ export async function POST(request) {
     // Auto-infer stage if not provided
     if (!context.stage) context.stage = inferStage(filtered);
 
+    // Inject mode hint into last user message
+    const lastMsg = filtered[filtered.length - 1];
+    const messagesWithHint = [
+      ...filtered.slice(0, -1),
+      { ...lastMsg, content: `[MODE: ${mode}] ${lastMsg.content}` },
+    ];
+
     const system = buildSystem(trimmedTasks, mode, context);
     const strictSystem = buildSystem(trimmedTasks, mode, context, true);
 
     // Attempt 1
-    let raw = await callAnthropic(system, filtered, maxTokens, temp);
+    let raw = await callAnthropic(system, messagesWithHint, maxTokens, temp);
     let parsed = tryParse(raw);
 
-    // Score check — retry if output is weak
-    if (parsed) {
-      const normalized = normalize(parsed, trimmedTasks, mode);
-      if (score(normalized) < 2) parsed = null;
-    }
+    // Score raw output BEFORE normalize
+    const needsRetry = !parsed
+      || score({ text: parsed.text, tasks: parsed.tasks || [], suggestions: parsed.suggestions || [] }) < 2
+      || !validateMode(parsed, mode);
 
     // Attempt 2 — strict fix
-    if (!parsed) {
+    if (needsRetry) {
       raw = await callAnthropic(strictSystem, [
-        ...filtered,
+        ...messagesWithHint,
         { role: "assistant", content: raw },
-        { role: "user", content: "Invalid JSON. Return ONLY valid JSON now." },
+        { role: "user", content: "Invalid or incomplete response. Return ONLY valid JSON now." },
       ], 600, 0.1);
       parsed = tryParse(raw);
     }
 
     // Attempt 3 — minimal JSON
-    if (!parsed) {
+    if (!parsed || !validateMode(parsed, mode)) {
       raw = await callAnthropic(strictSystem, [
-        ...filtered,
+        ...messagesWithHint,
         { role: "assistant", content: raw },
         { role: "user", content: "Return minimal valid JSON: {text, tasks, suggestions, mode}." },
       ], 400, 0.1);
