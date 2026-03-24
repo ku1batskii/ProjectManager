@@ -229,7 +229,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gridTemplateColumns: "repeat(2, minmax(0,1fr))",
               gap: 12,
               marginBottom: 18,
             }}
@@ -338,6 +338,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
+                   textAlign: "center",
                 }}
               />
             </div>
@@ -358,6 +359,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
+                   textAlign: "center",
                 }}
               />
             </div>
