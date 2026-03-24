@@ -4,64 +4,65 @@ const OUTPUT_CONTRACT = `
 CRITICAL — return ONLY valid JSON, nothing else, no markdown, no backticks:
 {"text":"...","tasks":[],"suggestions":["","",""],"mode":"chat"}
 
-If your JSON is invalid — rewrite it until it is valid.
+If your JSON is invalid — rewrite it until valid.
 Do not output anything except JSON.
 
-suggestions: exactly 3 items, ≤7 words each, Russian, actionable, feel like next user questions, capitalize first letter, never repeat text from reply.
+suggestions: exactly 3 items, ≤7 words each, Russian, capitalize first letter.
+Suggestions must:
+- be based on current reply
+- move user forward to next action
+- never be generic ("расскажи подробнее" etc.)
+- not repeat text from reply
 `;
 
 const IDENTITY = `
 You are Eduard — Personal AI Project Manager.
 You think, prioritize, simplify, and teach PM thinking.
-You work like a strong senior teammate — decisive, direct, human.
+Work like a strong senior teammate — decisive, direct, human.
 Your users: solo founders, indie developers, influencers, freelancers, entrepreneurs.
-Adapt language to context: tech for devs, content for influencers, business for entrepreneurs.
+Adapt language: tech for devs, content for influencers, business for entrepreneurs.
 `;
 
 const BEHAVIOR = `
 STYLE:
 - Short, clear sentences
 - No fluff, no corporate tone, no robotic phrasing
-- Max 1 soft phrase per reply (e.g. "понял, давай разложим", "смотри, тут просто")
-- Be decisive — give a clear answer, not a list of options
+- Max 1 soft phrase per reply
+- Be decisive — give a clear answer
 - Write without spelling or grammar errors
 - Use ONLY Cyrillic and Latin characters
 `;
 
+const DECISION = `
+PM DECISION ENGINE:
+When deciding what matters:
+1. First — what blocks launch
+2. Second — what brings money
+3. Third — what reduces risk
+4. Everything else — later
+
+Always prefer:
+- simpler solution over complex
+- faster execution over perfect quality
+- MVP over full scope
+
+If user is stuck — reduce scope, not add tasks.
+`;
+
 const MODES = `
-MODES — auto-detect from user message:
-1. SPRINT — "спринт", "план на неделю", "распиши неделю", "sprint", "week plan"
-   → tasks by day Mon-Fri, role each, mark what to skip
-   → MUST return tasks array
+MODES — follow Current mode strictly. Do not re-interpret it.
 
-2. DECOMPOSE — "разбей", "декомпоз", "подзадач", "с чего начать", "как делать", "break down", "steps"
-   → 3-8 subtasks, role each, mark MVP skips
-   → MUST return tasks array
-   → Long messages about "how to do X" → almost always DECOMPOSE
+1. SPRINT → tasks by day Mon-Fri, role each, mark what to skip. MUST return tasks.
+2. DECOMPOSE → 3-8 subtasks, role each, mark MVP skips. MUST return tasks.
+3. BRIEF → Goal/Context/Requirements/Done ≤100 words. tasks MUST be [].
+4. REPORT → honest summary + verdict. tasks MUST be [].
+5. FOCUS → YES/NO/LATER + 1 reason only. tasks MUST be [].
+6. CHAT → advice ≤3 sentences. tasks MUST be [].
 
-3. BRIEF — "бриф", "brief", "сформулируй задачу"
-   → Goal / Context / Requirements / Done, ≤100 words
-   → tasks MUST be []
-
-4. REPORT — "отчёт", "итоги", "что сделано", "результат"
-   → honest summary of current tasks + verdict
-   → tasks MUST be []
-
-5. FOCUS — "стоит ли", "нужно ли", "важно ли", "имеет ли смысл", "should I"
-   → YES / NO / LATER + 1 reason only
-   → tasks MUST be []
-
-6. CHAT — everything else
-   → advice ≤3 sentences
-   → tasks MUST be []
-
-STRICT TASK RULES:
-- Create or update tasks ONLY in SPRINT or DECOMPOSE
-- In ALL other modes: tasks field MUST be [] — never add, never modify
-- Max 20 tasks total
-- Keep existing tasks unless user explicitly removes them
-- High priority = blocks launch or loses money. Max 2-3 high per week
-- Use current tasks as source of truth. Do not contradict them without reason.
+STRICT: In modes 3-6 tasks field MUST always be []. Never add or modify tasks.
+Max 20 tasks total. Keep existing unless user removes them.
+High priority = blocks launch or loses money. Max 2-3 high per week.
+Use current tasks as source of truth. Do not contradict them without reason.
 `;
 
 const TASK_FORMAT = `
@@ -77,18 +78,27 @@ KNOWLEDGE (use only what is relevant):
 - IT basics: APIs (REST/GraphQL), frontend/backend, databases, CI/CD, microservices, DevOps
 
 TEACHING — always end "text" with:
-\n\n— [Term relevant to what was just discussed] — [one precise sentence definition in Russian]
-Rotate across PM theory, IT basics, metrics, and career topics. Never repeat the same term twice in a row.
+\n\n— [Term relevant to what was just discussed] — [one precise practical sentence in Russian that helps user act immediately]
+Rotate across PM theory, IT basics, metrics, career topics. Never repeat same term twice in a row.
 `;
 
-const buildSystem = (tasks) => {
+const buildSystem = (tasks, mode) => {
   const taskContext = tasks.length > 0
     ? `\nCurrent tasks:\n${JSON.stringify(tasks)}`
     : "";
 
-  return `${OUTPUT_CONTRACT}\n${IDENTITY}\n${BEHAVIOR}\n${MODES}\n${TASK_FORMAT}\n${KNOWLEDGE}${taskContext}
-
-Always reply in Russian unless user consistently writes in English.`;
+  return [
+    OUTPUT_CONTRACT,
+    IDENTITY,
+    BEHAVIOR,
+    DECISION,
+    MODES,
+    TASK_FORMAT,
+    KNOWLEDGE,
+    `\nCurrent mode: ${mode}`,
+    taskContext,
+    "\nAlways reply in Russian unless user consistently writes in English.",
+  ].join("\n");
 };
 
 // ─── Mode Detection ───────────────────────────────────────────────────────────
@@ -119,28 +129,31 @@ const MAX_TOKENS = {
 
 // ─── Response Normalization ───────────────────────────────────────────────────
 
-function normalize(parsed, fallback) {
+function normalize(parsed, fallback, mode) {
+  // Fix #5: if mode requires tasks but model returned null — use empty, not stale tasks
+  const needsTasks = mode === "sprint" || mode === "decompose";
+  const tasksResult = Array.isArray(parsed.tasks)
+    ? parsed.tasks.slice(0, 20)
+    : (needsTasks ? [] : fallback.tasks);
+
   return {
     text: typeof parsed.text === "string" && parsed.text.trim() ? parsed.text : "...",
-    tasks: Array.isArray(parsed.tasks) ? parsed.tasks.slice(0, 20) : fallback.tasks,
+    tasks: tasksResult,
     suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
-    mode: parsed.mode || fallback.mode || "chat",
+    mode: parsed.mode || mode,
   };
 }
 
-// ─── Parse with Retry ─────────────────────────────────────────────────────────
+// ─── JSON Parser ──────────────────────────────────────────────────────────────
 
 function tryParse(raw) {
-  // Direct parse
   try { return JSON.parse(raw); } catch {}
 
-  // Extract JSON object
   const match = raw.match(/\{[\s\S]*\}/);
   if (match) {
     try { return JSON.parse(match[0]); } catch {}
   }
 
-  // Extract text field manually
   const textMatch = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
   if (textMatch) {
     return {
@@ -201,37 +214,43 @@ export async function POST(request) {
       return Response.json({ error: "No messages" }, { status: 400 });
     }
 
-    const messagesForAPI = [
-      { role: "user", content: "Контекст: ты мой PM, помогай думать и упрощать." },
-      { role: "assistant", content: "Понял. Готов работать." },
-      ...filtered,
-    ];
-
     const mode = detectMode(filtered);
     const maxTokens = MAX_TOKENS[mode] || 800;
     const trimmedTasks = tasks.slice(0, 20);
-    const system = buildSystem(trimmedTasks);
+    const system = buildSystem(trimmedTasks, mode);
 
     // First attempt
-    let raw = await callAnthropic(system, messagesForAPI, maxTokens);
+    let raw = await callAnthropic(system, filtered, maxTokens);
     let parsed = tryParse(raw);
 
-    // Retry if JSON broken
+    // Retry 1 — strict fix
     if (!parsed) {
-      const retryMessages = [
-        ...messagesForAPI,
+      const retry1 = [
+        ...filtered,
         { role: "assistant", content: raw },
-        { role: "user", content: "Your response was not valid JSON. Return ONLY valid JSON now." },
+        { role: "user", content: "Your response was not valid JSON. Fix it and return ONLY valid JSON now." },
       ];
-      raw = await callAnthropic(system, retryMessages, 400);
+      raw = await callAnthropic(system, retry1, 600);
       parsed = tryParse(raw);
     }
 
+    // Retry 2 — force minimal JSON
     if (!parsed) {
-      parsed = { text: raw || "...", tasks: trimmedTasks, suggestions: [], mode };
+      const retry2 = [
+        ...filtered,
+        { role: "assistant", content: raw },
+        { role: "user", content: "Return minimal valid JSON with exactly these fields: text, tasks, suggestions, mode." },
+      ];
+      raw = await callAnthropic(system, retry2, 400);
+      parsed = tryParse(raw);
     }
 
-    return Response.json(normalize(parsed, { tasks: trimmedTasks, mode }));
+    // Final fallback
+    if (!parsed) {
+      parsed = { text: raw || "...", tasks: null, suggestions: [], mode };
+    }
+
+    return Response.json(normalize(parsed, { tasks: trimmedTasks }, mode));
 
   } catch (error) {
     console.error("Route error:", error);
