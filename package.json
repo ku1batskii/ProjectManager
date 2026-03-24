@@ -8,10 +8,13 @@
     "start": "next start"
   },
   "dependencies": {
+    "@clerk/nextjs": "latest",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@supabase/supabase-js": "latest",
     "next": "15.3.6",
     "react": "^18",
-    "react-dom": "^18",
-    "@clerk/nextjs": "latest",
-    "@supabase/supabase-js": "latest"
+    "react-dom": "^18"
   }
 }
