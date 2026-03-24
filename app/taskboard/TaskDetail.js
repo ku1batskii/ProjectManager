@@ -141,16 +141,18 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 760,
-          height: "100dvh",
-          background: "#0C0C14",
-          borderLeft: "1px solid #1E293B",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
-        }}
+  style={{
+  width: "100%",
+  maxWidth: 760,
+  height: "100dvh",
+  background: "#0C0C14",
+  borderLeft: "1px solid #1E293B",
+  display: "flex",
+  flexDirection: "column",
+  boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
+  boxSizing: "border-box",
+  overflowX: "hidden",
+  }}
       >
         <div
           style={{
@@ -192,11 +194,13 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
         </div>
 
         <div
-          style={{
-            flex: 1,
-            overflowY: "auto",
-            padding: "18px 16px 24px",
-          }}
+  style={{
+  flex: 1,
+  overflowY: "auto",
+  overflowX: "hidden",
+  padding: "18px 16px 24px",
+  boxSizing: "border-box",
+  }}
         >
           <div style={{ marginBottom: 18 }}>
             <FieldLabel>Title</FieldLabel>
@@ -669,19 +673,29 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           </div>
         </div>
 
-        <style>{`
-          input[type="date"]::-webkit-calendar-picker-indicator {
-            filter: invert(.7);
-            cursor: pointer;
-          }
-          textarea::placeholder, input::placeholder {
-            color: #475569;
-          }
-          select option {
-            background: #161622;
-            color: #E2E8F0;
-          }
-        `}</style>
+<style>{`
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  input, textarea, select, button {
+    max-width: 100%;
+  }
+
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(.7);
+    cursor: pointer;
+  }
+
+  textarea::placeholder, input::placeholder {
+    color: #475569;
+  }
+
+  select option {
+    background: #161622;
+    color: #E2E8F0;
+  }
+`}</style>
       </div>
     </div>
   );
