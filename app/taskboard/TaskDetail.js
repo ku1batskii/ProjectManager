@@ -313,7 +313,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+              gridTemplateColumns: "1fr",
               gap: 12,
               marginBottom: 20,
             }}
