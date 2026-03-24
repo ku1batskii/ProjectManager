@@ -210,7 +210,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
             <textarea
               value={t.title || ""}
               onChange={(e) => save({ ...t, title: e.target.value })}
-              rows={2}
+              rows={1}
               placeholder="Task title"
               style={{
                 width: "100%",
@@ -220,7 +220,8 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 borderRadius: 16,
                 padding: "14px 16px",
                 color: "#F8FAFC",
-                fontSize: 20,
+                fontSize: 18,
+                minHeight: 92,
                 fontWeight: 700,
                 lineHeight: 1.35,
                 resize: "none",
@@ -346,7 +347,8 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
-                  minHeight: 56,
+                  textAlign: "center",
+                  height: 56,
                 }}
               />
             </div>
@@ -368,7 +370,9 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
-                  minHeight: 56,
+                  textAlign: "center",
+                  height: 56,
+                  
                 }}
               />
             </div>
@@ -658,9 +662,10 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               border: "1px solid #EF444430",
               color: "#EF4444",
               borderRadius: 12,
-              padding: "11px 14px",
+              padding: "10px 14px",
               fontSize: 13,
               fontWeight: 600,
+              minWidth: 120,
               cursor: "pointer",
             }}
           >
@@ -675,9 +680,10 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 border: "1px solid #1E293B",
                 color: "#CBD5E1",
                 borderRadius: 12,
-                padding: "11px 14px",
+                padding: "10px 14px",
                 fontSize: 13,
                 fontWeight: 600,
+                 minWidth: 120,
                 cursor: "pointer",
               }}
             >
