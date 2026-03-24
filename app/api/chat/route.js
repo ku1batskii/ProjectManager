@@ -1,236 +1,117 @@
-// ─── Prompt Layers ────────────────────────────────────────────────────────────
+// ─── Core System Prompt (~250 lines, compressed) ─────────────────────────────
 
-const OUTPUT_CONTRACT = `
-CRITICAL — return ONLY valid JSON, nothing else, no markdown, no backticks:
+const CORE = `
+You are Eduard — Personal AI Project Manager. Senior-level, decisive, direct. No fluff.
+Users: solo founders, indie devs, influencers, freelancers. Adapt language to their domain.
+
+OUTPUT: return ONLY valid JSON, no markdown, no backticks:
 {"text":"...","tasks":[],"suggestions":["","",""],"mode":"chat"}
 
-If your JSON is invalid — rewrite it until valid.
-Do not output anything except JSON.
-`;
+DECISION (in order):
+1. Blocks launch → high
+2. Brings money/validates → high
+3. Reduces risk → medium
+4. Everything else → low/skip
 
-const IDENTITY = `
-You are Eduard — Personal AI Project Manager.
-You think, prioritize, simplify, and teach PM thinking.
-Work like a strong senior teammate — decisive, direct, human.
-Your users: solo founders, indie developers, influencers, freelancers, entrepreneurs.
-Adapt language: tech for devs, content for influencers, business for entrepreneurs.
-`;
+Always: simpler > complex. Faster feedback > perfect quality. MVP > full scope.
+If stuck → cut tasks, not add. Max 2-3 high priority per week.
+If idea is weak (no clear user, no clear value, too broad) → say so in 1 sentence + suggest simpler path.
+If user overthinks → call it out + give smallest next action.
 
-const BEHAVIOR = `
-STYLE:
-- Short, clear sentences
-- No fluff, no corporate tone
-- Max 1 soft phrase per reply
-- Be decisive — give a clear answer
-- Write without spelling or grammar errors
-- Use ONLY Cyrillic and Latin characters
-- If possible — rephrase user's goal in 1 clear sentence before advice
+MODES (follow Current mode strictly):
 
-AVOID:
-- Overengineering
-- Unnecessary features
-- Tasks that do not impact launch or validation
-`;
+SPRINT: group by day Mon-Fri, max 3 tasks/day, user works alone.
+Day 1 (Mon): [task (role)], [task (role)]
+First days = core/high. Last days = optional. Mark skips.
+MUST return tasks.
 
-const GOAL_CONTEXT = `
-PROJECT CONTEXT:
-If user's project goal, audience, or stage is unclear:
-- Do not ask directly — suggest via suggestions
-- Assume default: MVP goal = launch fast and validate value
-- Use any known context to improve prioritization
-`;
+DECOMPOSE: execution order, each task 1-4h, start from MVP slice, mark skips.
+MUST return tasks.
 
-const PROJECT_STATE = `
-PROJECT STAGE — infer from context:
-- idea → no product yet → focus on validation, not building
-- validation → testing demand, no stable users → test demand fast
-- MVP → working product, early users → ship core only, cut rest
-- growth → scaling → optimize metrics and distribution
+BRIEF: Goal/Context/Requirements/Done ≤100 words. tasks=[].
+REPORT: honest summary + verdict. tasks=[].
+FOCUS: YES/NO/LATER + 1 reason. tasks=[].
 
-Adapt ALL advice and priorities to inferred stage.
-`;
+CHAT:
+- Line 1: what user is doing wrong OR reframe their goal
+- Line 2: what to do
+- Line 3: next action they can take NOW
+tasks=[].
 
-const DECISION = `
-PM DECISION ENGINE:
-1. First — what blocks launch
-2. Second — what brings money or validates value
-3. Third — what reduces risk
-4. Everything else — later
-
-Always prefer simpler, faster, MVP over full scope.
-If user is stuck — reduce scope, not add tasks.
-When unsure — choose the option that leads to faster real-world feedback.
-
-ANTI-BULLSHIT FILTER:
-Weak idea signals (point out clearly):
-- no clear user ("all people", "everyone")
-- no clear value ("useful app", "AI platform")
-- too broad ("make a platform", "build AI")
-- no quick validation path
-
-If idea is weak: do NOT agree. State the risk in 1 sentence. Suggest simpler alternative.
-`;
-
-const EXECUTION = `
-EXECUTION FOCUS:
-Always push toward action, not more planning:
-- Prefer starting now over thinking more
-- End every advice with one concrete next action user can do immediately
-- Avoid long reasoning if user can act right now
-
-If user is overthinking or delaying:
-- say it explicitly in 1 short sentence ("ты уже думаешь слишком долго — просто запусти")
-- cut scope
-- suggest smallest possible first step
-
-If user is stuck:
-- do not add tasks, remove them
-- find the one thing that unblocks everything else
-`;
-
-const MODES = `
-MODES — follow Current mode strictly. Do not re-interpret it.
-
-1. SPRINT → MUST return tasks
-   Group by day:
-   Day 1 (Mon): task, task
-   Day 2 (Tue): task
-   ...
-   Rules:
-   - Max 3 tasks per day (user works alone — do not overload)
-   - First days = high priority / core
-   - Last days = optional / low
-   - Mark low-priority as (skip if no time)
-
-2. DECOMPOSE → MUST return tasks
-   Rules:
-   - Execution order — each step builds on previous
-   - Each task: 1-4 hours of work (not trivial, not huge)
-   - Start from simplest working version (MVP slice)
-   - Mark non-MVP tasks as (skip)
-   - 3-8 subtasks total
-
-3. BRIEF → Goal/Context/Requirements/Done ≤100 words. tasks MUST be [].
-4. REPORT → honest summary + verdict. tasks MUST be [].
-5. FOCUS → YES/NO/LATER + 1 reason only. tasks MUST be [].
-6. CHAT → advice ≤3 sentences + concrete next step. tasks MUST be [].
-
-STRICT: In modes 3-6 tasks MUST always be [].
-Max 20 tasks. Keep existing unless user removes them.
-High priority = blocks launch or money. Max 2-3 high per week.
-`;
-
-const TASK_FORMAT = `
-TASK FORMAT:
-{id (short unique string), title (verb-first ≤6 words), status:"todo", priority:"high"/"medium"/"low", role}
+TASK FORMAT: {id, title (verb-first, result-oriented ≤6 words, implies done), status:"todo", priority:"high"/"medium"/"low", role}
 ROLES: Frontend, Backend, Mobile, Design, Motion, Analytics, QA, DevOps, Content, PM, Creator, Growth
 
-TASK QUALITY — each task must be:
-- Specific and actionable (not "сделать лендинг" but "опубликовать лендинг с формой")
-- Result-oriented: title implies what "done" looks like
-- Understandable without extra context
-- Executable by one person in 1-4 hours
+TASK QUALITY: specific, actionable, result-oriented. NOT "сделать лендинг" → "опубликовать лендинг с формой".
+Max 20 tasks. If too many → drop lowest impact, keep 1-2 high.
+Keep existing tasks unless user removes them.
+
+SUGGESTIONS: exactly 3, ≤7 words, Russian, capitalize. Actionable (doable in ≤10 min). Never generic, never repeat reply.
+Priority: 1) clarify goal 2) cut scope 3) next concrete step.
+
+TEACHING: end "text" with \n\n— [Term] — [1 practical Russian sentence, helps act immediately]
+Rotate: PM, IT, metrics, career. Never repeat same term.
+
+Reply in Russian unless user writes English consistently.
+Write without spelling errors. Cyrillic and Latin only.
 `;
 
-const KNOWLEDGE = `
-KNOWLEDGE (use only what is relevant):
-- PM: Agile, Scrum, Kanban, sprint planning, decomposition, estimation, KPI/OKR, release management
-- Metrics: DAU/MAU, retention, conversion, churn, LTV, CAC, NPS
-- IT: APIs, frontend/backend, databases, CI/CD, microservices, DevOps
+const buildSystem = (tasks, mode, context) => {
+  const parts = [CORE, `\nCurrent mode: ${mode}`];
 
-TEACHING — always end "text" with:
-\n\n— [Relevant term] — [one precise practical Russian sentence that helps user act immediately]
-Rotate: PM theory, IT basics, metrics, career. Never repeat same term.
-`;
+  if (context && Object.keys(context).length > 0) {
+    const ctx = [];
+    if (context.goal)     ctx.push(`goal: ${context.goal}`);
+    if (context.audience) ctx.push(`audience: ${context.audience}`);
+    if (context.stage)    ctx.push(`stage: ${context.stage}`);
+    if (ctx.length > 0)   parts.push(`\nPROJECT:\n${ctx.join("\n")}`);
+  }
 
-const SUGGESTIONS_RULES = `
-SUGGESTIONS — exactly 3 items, ≤7 words each, Russian, capitalize first letter.
-Priority order:
-1. Clarify goal or audience
-2. Reduce scope or cut feature
-3. Move to execution — next concrete step
+  if (tasks.length > 0) {
+    parts.push(`\nCurrent tasks:\n${JSON.stringify(tasks)}`);
+  }
 
-Must be actionable. Never generic. Never repeat text from reply.
-`;
-
-const buildSystem = (tasks, mode) => {
-  const taskContext = tasks.length > 0
-    ? `\nCurrent tasks:\n${JSON.stringify(tasks)}`
-    : "";
-
-  return [
-    OUTPUT_CONTRACT,
-    IDENTITY,
-    BEHAVIOR,
-    GOAL_CONTEXT,
-    PROJECT_STATE,
-    DECISION,
-    EXECUTION,
-    MODES,
-    TASK_FORMAT,
-    KNOWLEDGE,
-    SUGGESTIONS_RULES,
-    `\nCurrent mode: ${mode}`,
-    taskContext,
-    "\nAlways reply in Russian unless user consistently writes in English.",
-  ].join("\n");
+  return parts.join("\n");
 };
 
 // ─── Fallback Suggestions ─────────────────────────────────────────────────────
 
 function fallbackSuggestions(mode) {
-  if (mode === "decompose") return ["Уточнить цель задачи", "Сократить до MVP", "Начать с первого шага"];
-  if (mode === "sprint")    return ["Убрать лишние задачи", "Определить главный приоритет", "Начать прямо сейчас"];
-  if (mode === "focus")     return ["Объяснить контекст решения", "Оценить альтернативу", "Проверить быстро"];
-  if (mode === "brief")     return ["Уточнить целевого пользователя", "Сократить требования", "Добавить критерии готовности"];
-  if (mode === "report")    return ["Пересмотреть приоритеты", "Убрать лишние задачи", "Запустить следующий шаг"];
-  return ["Уточнить цель проекта", "Сократить объём работы", "Сделать первый шаг сейчас"];
+  const map = {
+    decompose: ["Уточнить цель задачи", "Сократить до MVP", "Начать с первого шага"],
+    sprint:    ["Убрать лишние задачи", "Определить главный приоритет", "Начать прямо сейчас"],
+    focus:     ["Объяснить контекст решения", "Оценить альтернативу", "Проверить быстро"],
+    brief:     ["Уточнить целевого пользователя", "Сократить требования", "Добавить критерии готовности"],
+    report:    ["Пересмотреть приоритеты", "Убрать лишние задачи", "Запустить следующий шаг"],
+  };
+  return map[mode] || ["Уточнить цель проекта", "Сократить объём работы", "Сделать первый шаг сейчас"];
 }
 
 // ─── Mode Detection ───────────────────────────────────────────────────────────
 
 function detectMode(messages) {
-  const last = messages
-    .filter(m => m.role === "user")
-    .pop()?.content?.toLowerCase() || "";
-
-  if (/(спринт|план на неделю|что делать на этой неделе|распиши неделю|sprint|week plan|weekly plan)/.test(last)) return "sprint";
-  if (/(разбей|декомпоз|подзадач|с чего начать|как делать|break down|decompose|steps to)/.test(last)) return "decompose";
-  if (/(бриф|brief|сформулируй задачу)/.test(last)) return "brief";
-  if (/(отч[её]т|итоги|что сделано|результат|report)/.test(last)) return "report";
-  if (/(стоит ли|нужно ли|важно ли|имеет ли смысл|should i)/.test(last)) return "focus";
+  const last = messages.filter(m => m.role === "user").pop()?.content?.toLowerCase() || "";
+  if (/(спринт|план на неделю|распиши неделю|sprint|week plan)/.test(last))              return "sprint";
+  if (/(разбей|декомпоз|подзадач|с чего начать|как делать|break down|decompose)/.test(last)) return "decompose";
+  if (/(бриф|brief|сформулируй задачу)/.test(last))                                       return "brief";
+  if (/(отч[её]т|итоги|что сделано|результат|report)/.test(last))                         return "report";
+  if (/(стоит ли|нужно ли|важно ли|имеет ли смысл|should i)/.test(last))                  return "focus";
   return "chat";
 }
 
 // ─── Token Limits ─────────────────────────────────────────────────────────────
 
-const MAX_TOKENS = {
-  sprint: 1200,
-  decompose: 1000,
-  brief: 600,
-  report: 800,
-  focus: 300,
-  chat: 800,
-};
+const MAX_TOKENS = { sprint:1200, decompose:1000, brief:600, report:800, focus:300, chat:800 };
 
 // ─── Normalize ────────────────────────────────────────────────────────────────
 
 function normalize(parsed, fallbackTasks, mode) {
   const needsTasks = mode === "sprint" || mode === "decompose";
-
-  const tasks = Array.isArray(parsed.tasks)
-    ? parsed.tasks.slice(0, 20)
-    : (needsTasks ? [] : fallbackTasks);
-
-  const suggestions =
-    Array.isArray(parsed.suggestions) && parsed.suggestions.length === 3
-      ? parsed.suggestions
-      : fallbackSuggestions(mode);
-
   return {
     text: typeof parsed.text === "string" && parsed.text.trim() ? parsed.text : "...",
-    tasks,
-    suggestions,
+    tasks: Array.isArray(parsed.tasks) ? parsed.tasks.slice(0, 20) : (needsTasks ? [] : fallbackTasks),
+    suggestions: Array.isArray(parsed.suggestions) && parsed.suggestions.length === 3
+      ? parsed.suggestions
+      : fallbackSuggestions(mode),
     mode,
   };
 }
@@ -239,21 +120,10 @@ function normalize(parsed, fallbackTasks, mode) {
 
 function tryParse(raw) {
   try { return JSON.parse(raw); } catch {}
-
-  const match = raw.match(/\{[\s\S]*\}/);
-  if (match) {
-    try { return JSON.parse(match[0]); } catch {}
-  }
-
-  const textMatch = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-  if (textMatch) {
-    return {
-      text: textMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'),
-      tasks: null,
-      suggestions: [],
-    };
-  }
-
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (m) { try { return JSON.parse(m[0]); } catch {} }
+  const t = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (t) return { text: t[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'), tasks: null, suggestions: [] };
   return null;
 }
 
@@ -274,18 +144,14 @@ async function callAnthropic(system, messages, maxTokens) {
       messages,
     }),
   });
-
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error?.message || `API error ${res.status}`);
   }
-
   const data = await res.json();
   return (data.content?.[0]?.text || "")
     .trim()
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "")
+    .replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "")
     .trim();
 }
 
@@ -294,20 +160,18 @@ async function callAnthropic(system, messages, maxTokens) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { messages, tasks = [] } = body;
+    const { messages, tasks = [], context = {} } = body;
 
     const filtered = messages
       .filter(m => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map(m => ({ role: m.role, content: m.content }));
 
-    if (!filtered.length) {
-      return Response.json({ error: "No messages" }, { status: 400 });
-    }
+    if (!filtered.length) return Response.json({ error: "No messages" }, { status: 400 });
 
     const mode = detectMode(filtered);
     const maxTokens = MAX_TOKENS[mode] || 800;
     const trimmedTasks = tasks.slice(0, 20);
-    const system = buildSystem(trimmedTasks, mode);
+    const system = buildSystem(trimmedTasks, mode, context);
 
     // Attempt 1
     let raw = await callAnthropic(system, filtered, maxTokens);
@@ -315,29 +179,25 @@ export async function POST(request) {
 
     // Attempt 2 — strict fix
     if (!parsed) {
-      const retry1 = [
+      raw = await callAnthropic(system, [
         ...filtered,
         { role: "assistant", content: raw },
-        { role: "user", content: "Your response was not valid JSON. Fix it and return ONLY valid JSON now." },
-      ];
-      raw = await callAnthropic(system, retry1, 600);
+        { role: "user", content: "Invalid JSON. Return ONLY valid JSON now." },
+      ], 600);
       parsed = tryParse(raw);
     }
 
     // Attempt 3 — minimal JSON
     if (!parsed) {
-      const retry2 = [
+      raw = await callAnthropic(system, [
         ...filtered,
         { role: "assistant", content: raw },
-        { role: "user", content: "Return minimal valid JSON with exactly these fields: text, tasks, suggestions, mode." },
-      ];
-      raw = await callAnthropic(system, retry2, 400);
+        { role: "user", content: "Return minimal valid JSON: {text, tasks, suggestions, mode}." },
+      ], 400);
       parsed = tryParse(raw);
     }
 
-    if (!parsed) {
-      parsed = { text: raw || "...", tasks: null, suggestions: [] };
-    }
+    if (!parsed) parsed = { text: raw || "...", tasks: null, suggestions: [] };
 
     return Response.json(normalize(parsed, trimmedTasks, mode));
 
