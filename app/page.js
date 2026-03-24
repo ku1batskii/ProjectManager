@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const CONTENT = {
   en: {
-    nav_cta: "Get your plan →",
+    nav_cta: "Get your plan",
     badge: "Early access · $4.99/mo",
     hero_title: "Stop guessing\nwhat to do next.",
     hero_sub: "Eduard turns your chaos into a clear execution plan in 60 seconds. AI Project Manager for solo builders.",
@@ -14,7 +14,7 @@ const CONTENT = {
       "Any idea → actionable subtasks",
       "Focus filter: what NOT to do",
     ],
-    hero_cta: "Get your plan →",
+    hero_cta: "Get your plan",
     hero_secondary: "See how it works",
     social_proof: "Used by 200+ solo founders this week",
 
@@ -64,7 +64,7 @@ const CONTENT = {
     pricing_price: "$4.99",
     pricing_period: "per month · cancel anytime",
     pricing_compare: "Less than 1 hour of a freelance PM — but replaces one completely.",
-    pricing_cta: "Get your plan →",
+    pricing_cta: "Get your plan",
     pricing_features: [
       "Unlimited conversations",
       "Sprint planning & task decomposition",
@@ -86,13 +86,13 @@ const CONTENT = {
     ],
 
     final_cta_title: "From chaos to clear plan.\nIn 60 seconds.",
-    final_cta_btn: "Start free today →",
+    final_cta_btn: "Start free today",
     footer: "PROJECTME · 2025 · Built by a solo founder, for solo founders",
     online: "online",
   },
 
   ru: {
-    nav_cta: "Получить план →",
+    nav_cta: "Получить план",
     badge: "Ранний доступ · $4.99/мес",
     hero_title: "Хватит гадать\nчто делать дальше.",
     hero_sub: "Эдуард превращает твой хаос в чёткий план действий за 60 секунд. AI Project Manager для соло-строителей.",
@@ -101,7 +101,7 @@ const CONTENT = {
       "Любая идея → конкретные подзадачи",
       "Фокус-фильтр: что делать не нужно",
     ],
-    hero_cta: "Получить план →",
+    hero_cta: "Получить план",
     hero_secondary: "Как это работает",
     social_proof: "Используют 200+ соло-фаундеров на этой неделе",
 
@@ -151,7 +151,7 @@ const CONTENT = {
     pricing_price: "$4.99",
     pricing_period: "в месяц · отмена в любой момент",
     pricing_compare: "Дешевле одного часа PM-консультанта — но заменяет его полностью.",
-    pricing_cta: "Получить первый план →",
+    pricing_cta: "Получить первый план",
     pricing_features: [
       "Неограниченные разговоры",
       "Планирование спринтов и декомпозиция",
@@ -173,7 +173,7 @@ const CONTENT = {
     ],
 
     final_cta_title: "От хаоса к чёткому плану.\nЗа 60 секунд.",
-    final_cta_btn: "Начать бесплатно →",
+    final_cta_btn: "Начать бесплатно",
     footer: "PROJECTME · 2025 · Сделано соло-фаундером для соло-фаундеров",
     online: "онлайн",
   },
