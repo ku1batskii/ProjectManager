@@ -50,7 +50,8 @@ TEACHING: always end "text" with \n\n— [Term] — [1 practical Russian sentenc
 Rotate: PM, IT, metrics, career. Never repeat same term.
 
 Reply in Russian unless user writes English consistently.
-Write without spelling errors. Cyrillic and Latin only.
+Write without any spelling or grammar errors. Check Russian grammar carefully: gender agreement, case endings, verb conjugations. Cyrillic and Latin only.
+
 `;
 
 // ─── System Builder ───────────────────────────────────────────────────────────
