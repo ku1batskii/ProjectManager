@@ -1,74 +1,114 @@
-const PM_SYSTEM = `You are Eduard — Personal AI Project Manager.
+// ─── Prompt Layers ────────────────────────────────────────────────────────────
 
-CORE:
-You work FOR the user. You think, prioritize, simplify, and TEACH.
-Your users: solo founders, indie developers, influencers, freelancers, entrepreneurs.
-Each has projects, goals, deadlines — but no team and no PM. You are their PM.
-Adapt your language to context: tech terms for developers, content terms for influencers, business terms for entrepreneurs.
-You are friendly, clear, slightly informal — like a strong senior teammate.
-No corporate tone. No fluff. No robotic phrasing.
-
-STYLE:
-- Talk like a human, not a system
-- Short, clear sentences
-- Light friendliness is OK (1 soft phrase max per reply)
-- Never overexplain
-- Be decisive
-- If helpful, briefly acknowledge the user's situation in 1 short phrase (e.g. "понял, давай разложим", "смотри, тут просто", "да, логичный вопрос")
-- Use ONLY Cyrillic and Latin characters — never Chinese, Japanese, Korean or any other script. - Write without spelling or grammar errors. Proofread every sentence before output.
-
-ROLES (for tasks):
-Frontend, Backend, Mobile, Design, Motion, Analytics, QA, DevOps, Content, PM, Creator, Growth
-
-MODES (auto-detect intent):
-1. SPRINT → plan week Mon-Fri, tasks by day, role each, mark what to skip
-2. DECOMPOSE → 3-8 subtasks, role each, mark MVP skips
-3. BRIEF → Goal/Context/Requirements/Done (≤100 words, NO new tasks)
-4. REPORT → summarize + honest verdict (NO new tasks)
-5. FOCUS → YES/NO/LATER + 1 reason (NO new tasks)
-6. CHAT → advice ≤3 sentences (NO new tasks)
-
-TASK RULES:
-- Create/update tasks ONLY in SPRINT or DECOMPOSE
-- Max 20 tasks total. Keep existing unless user removes.
-- High priority = blocks launch or money loss. Max 2-3 high per week.
-
-TASK FORMAT:
-{id (short string), title (verb-first ≤6 words), status:"todo", priority:"high"/"medium"/"low", role}
-
-CONTEXT:
-You may receive current tasks. Use them as memory, not as strict truth.
-
-TEACHING:
-Always end "text" with:
-\n\n— [Term] — [one precise sentence definition in Russian]
-
-STRICT OUTPUT — return ONLY valid JSON, nothing else:
+const OUTPUT_CONTRACT = `
+CRITICAL — return ONLY valid JSON, nothing else, no markdown, no backticks:
 {"text":"...","tasks":[],"suggestions":["","",""],"mode":"chat"}
 
-RULES:
-- No markdown, no backticks, no explanations outside JSON
-- suggestions: exactly 3 items, ≤7 words each, Russian, user-like tone, capitalize first letter
-- Always reply in Russian unless user consistently writes in English`;
+If your JSON is invalid — rewrite it until it is valid.
+Do not output anything except JSON.
 
-// ─── Mode detection ───────────────────────────────────────────────────────────
+suggestions: exactly 3 items, ≤7 words each, Russian, actionable, feel like next user questions, capitalize first letter, never repeat text from reply.
+`;
+
+const IDENTITY = `
+You are Eduard — Personal AI Project Manager.
+You think, prioritize, simplify, and teach PM thinking.
+You work like a strong senior teammate — decisive, direct, human.
+Your users: solo founders, indie developers, influencers, freelancers, entrepreneurs.
+Adapt language to context: tech for devs, content for influencers, business for entrepreneurs.
+`;
+
+const BEHAVIOR = `
+STYLE:
+- Short, clear sentences
+- No fluff, no corporate tone, no robotic phrasing
+- Max 1 soft phrase per reply (e.g. "понял, давай разложим", "смотри, тут просто")
+- Be decisive — give a clear answer, not a list of options
+- Write without spelling or grammar errors
+- Use ONLY Cyrillic and Latin characters
+`;
+
+const MODES = `
+MODES — auto-detect from user message:
+1. SPRINT — "спринт", "план на неделю", "распиши неделю", "sprint", "week plan"
+   → tasks by day Mon-Fri, role each, mark what to skip
+   → MUST return tasks array
+
+2. DECOMPOSE — "разбей", "декомпоз", "подзадач", "с чего начать", "как делать", "break down", "steps"
+   → 3-8 subtasks, role each, mark MVP skips
+   → MUST return tasks array
+   → Long messages about "how to do X" → almost always DECOMPOSE
+
+3. BRIEF — "бриф", "brief", "сформулируй задачу"
+   → Goal / Context / Requirements / Done, ≤100 words
+   → tasks MUST be []
+
+4. REPORT — "отчёт", "итоги", "что сделано", "результат"
+   → honest summary of current tasks + verdict
+   → tasks MUST be []
+
+5. FOCUS — "стоит ли", "нужно ли", "важно ли", "имеет ли смысл", "should I"
+   → YES / NO / LATER + 1 reason only
+   → tasks MUST be []
+
+6. CHAT — everything else
+   → advice ≤3 sentences
+   → tasks MUST be []
+
+STRICT TASK RULES:
+- Create or update tasks ONLY in SPRINT or DECOMPOSE
+- In ALL other modes: tasks field MUST be [] — never add, never modify
+- Max 20 tasks total
+- Keep existing tasks unless user explicitly removes them
+- High priority = blocks launch or loses money. Max 2-3 high per week
+- Use current tasks as source of truth. Do not contradict them without reason.
+`;
+
+const TASK_FORMAT = `
+TASK FORMAT:
+{id (short unique string), title (verb-first ≤6 words), status:"todo", priority:"high"/"medium"/"low", role}
+ROLES: Frontend, Backend, Mobile, Design, Motion, Analytics, QA, DevOps, Content, PM, Creator, Growth
+`;
+
+const KNOWLEDGE = `
+KNOWLEDGE (use only what is relevant):
+- PM practices: Agile, Scrum, Kanban, sprint planning, decomposition, estimation, feature lifecycle, KPI/OKR, release management
+- Product metrics: DAU/MAU, retention, conversion, churn, LTV, CAC, NPS
+- IT basics: APIs (REST/GraphQL), frontend/backend, databases, CI/CD, microservices, DevOps
+
+TEACHING — always end "text" with:
+\n\n— [Term relevant to what was just discussed] — [one precise sentence definition in Russian]
+Rotate across PM theory, IT basics, metrics, and career topics. Never repeat the same term twice in a row.
+`;
+
+const buildSystem = (tasks) => {
+  const taskContext = tasks.length > 0
+    ? `\nCurrent tasks:\n${JSON.stringify(tasks)}`
+    : "";
+
+  return `${OUTPUT_CONTRACT}\n${IDENTITY}\n${BEHAVIOR}\n${MODES}\n${TASK_FORMAT}\n${KNOWLEDGE}${taskContext}
+
+Always reply in Russian unless user consistently writes in English.`;
+};
+
+// ─── Mode Detection ───────────────────────────────────────────────────────────
 
 function detectMode(messages) {
   const last = messages
     .filter(m => m.role === "user")
     .pop()?.content?.toLowerCase() || "";
 
-  if (/(спринт|план на неделю|что делать на этой неделе|распиши неделю)/.test(last)) return "sprint";
-  if (/(разбей|декомпоз|подзадач|с чего начать|как делать)/.test(last)) return "decompose";
+  if (/(спринт|план на неделю|что делать на этой неделе|распиши неделю|sprint|week plan|weekly plan)/.test(last)) return "sprint";
+  if (/(разбей|декомпоз|подзадач|с чего начать|как делать|break down|decompose|steps to)/.test(last)) return "decompose";
   if (/(бриф|brief|сформулируй задачу)/.test(last)) return "brief";
-  if (/(отч[её]т|итоги|что сделано|результат)/.test(last)) return "report";
-  if (/(стоит ли|нужно ли|важно ли|имеет ли смысл)/.test(last)) return "focus";
+  if (/(отч[её]т|итоги|что сделано|результат|report)/.test(last)) return "report";
+  if (/(стоит ли|нужно ли|важно ли|имеет ли смысл|should i)/.test(last)) return "focus";
   return "chat";
 }
 
-// ─── Token limits by mode ─────────────────────────────────────────────────────
+// ─── Token Limits ─────────────────────────────────────────────────────────────
 
-const MAX_TOKENS_BY_MODE = {
+const MAX_TOKENS = {
   sprint: 1200,
   decompose: 1000,
   brief: 600,
@@ -77,15 +117,73 @@ const MAX_TOKENS_BY_MODE = {
   chat: 800,
 };
 
-// ─── Response normalization ───────────────────────────────────────────────────
+// ─── Response Normalization ───────────────────────────────────────────────────
 
-function normalizeResponse(parsed, fallback) {
+function normalize(parsed, fallback) {
   return {
     text: typeof parsed.text === "string" && parsed.text.trim() ? parsed.text : "...",
     tasks: Array.isArray(parsed.tasks) ? parsed.tasks.slice(0, 20) : fallback.tasks,
     suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
     mode: parsed.mode || fallback.mode || "chat",
   };
+}
+
+// ─── Parse with Retry ─────────────────────────────────────────────────────────
+
+function tryParse(raw) {
+  // Direct parse
+  try { return JSON.parse(raw); } catch {}
+
+  // Extract JSON object
+  const match = raw.match(/\{[\s\S]*\}/);
+  if (match) {
+    try { return JSON.parse(match[0]); } catch {}
+  }
+
+  // Extract text field manually
+  const textMatch = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (textMatch) {
+    return {
+      text: textMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'),
+      tasks: null,
+      suggestions: [],
+      mode: "chat",
+    };
+  }
+
+  return null;
+}
+
+// ─── API Call ─────────────────────────────────────────────────────────────────
+
+async function callAnthropic(system, messages, maxTokens) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: maxTokens,
+      system,
+      messages,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API error ${res.status}`);
+  }
+
+  const data = await res.json();
+  return (data.content?.[0]?.text || "")
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -95,76 +193,45 @@ export async function POST(request) {
     const body = await request.json();
     const { messages, tasks = [] } = body;
 
-    const filteredMessages = messages
+    const filtered = messages
       .filter(m => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.trim())
       .map(m => ({ role: m.role, content: m.content }));
 
-    if (!filteredMessages.length) {
+    if (!filtered.length) {
       return Response.json({ error: "No messages" }, { status: 400 });
     }
 
-    // Stabilize model on long conversations
     const messagesForAPI = [
       { role: "user", content: "Контекст: ты мой PM, помогай думать и упрощать." },
       { role: "assistant", content: "Понял. Готов работать." },
-      ...filteredMessages,
+      ...filtered,
     ];
 
-    const mode = detectMode(filteredMessages);
-    const maxTokens = MAX_TOKENS_BY_MODE[mode] || 800;
+    const mode = detectMode(filtered);
+    const maxTokens = MAX_TOKENS[mode] || 800;
     const trimmedTasks = tasks.slice(0, 20);
+    const system = buildSystem(trimmedTasks);
 
-    const system = trimmedTasks.length > 0
-      ? `${PM_SYSTEM}\n\nCurrent tasks:\n${JSON.stringify(trimmedTasks)}`
-      : PM_SYSTEM;
+    // First attempt
+    let raw = await callAnthropic(system, messagesForAPI, maxTokens);
+    let parsed = tryParse(raw);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: maxTokens,
-        system,
-        messages: messagesForAPI,
-      }),
-    });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      return Response.json({ error: err.error?.message || "API error" }, { status: response.status });
-    }
-
-    const data = await response.json();
-    const raw = (data.content?.[0]?.text || "")
-      .trim()
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try { parsed = JSON.parse(jsonMatch[0]); } catch {}
-      }
+    // Retry if JSON broken
+    if (!parsed) {
+      const retryMessages = [
+        ...messagesForAPI,
+        { role: "assistant", content: raw },
+        { role: "user", content: "Your response was not valid JSON. Return ONLY valid JSON now." },
+      ];
+      raw = await callAnthropic(system, retryMessages, 400);
+      parsed = tryParse(raw);
     }
 
     if (!parsed) {
-      const textMatch = raw.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-      const extractedText = textMatch
-        ? textMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"')
-        : raw;
-      parsed = { text: extractedText, tasks: trimmedTasks, suggestions: [], mode };
+      parsed = { text: raw || "...", tasks: trimmedTasks, suggestions: [], mode };
     }
 
-    return Response.json(normalizeResponse(parsed, { tasks: trimmedTasks, mode }));
+    return Response.json(normalize(parsed, { tasks: trimmedTasks, mode }));
 
   } catch (error) {
     console.error("Route error:", error);
