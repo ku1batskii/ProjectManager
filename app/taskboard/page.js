@@ -3,6 +3,22 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import TaskDetail from "./TaskDetail";
+import {
+  DndContext,
+  PointerSensor,
+  KeyboardSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const STORAGE_KEY = "pm_tasks";
 
@@ -122,31 +138,17 @@ function IconButton({ children, onClick, title }) {
 function TopStat({ label, value, total, color }) {
   return (
     <div style={{ textAlign: "center", minWidth: 120 }}>
-      <div
-        style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color,
-          marginBottom: 4,
-        }}
-      >
+      <div style={{ fontSize: 13, fontWeight: 700, color, marginBottom: 4 }}>
         {label}
       </div>
-      <div
-        style={{
-          fontSize: 20,
-          fontWeight: 800,
-          color: "#F8FAFC",
-          lineHeight: 1.1,
-        }}
-      >
+      <div style={{ fontSize: 20, fontWeight: 800, color: "#F8FAFC", lineHeight: 1.1 }}>
         {value} of {total}
       </div>
     </div>
   );
 }
 
-function KanbanCard({ task, onClick }) {
+function KanbanCardContent({ task }) {
   const doneCount = (task.subtasks || []).filter((s) => s.done).length;
   const totalCount = (task.subtasks || []).length;
   const progress = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
@@ -155,28 +157,7 @@ function KanbanCard({ task, onClick }) {
   const roleColor = ROLE_COLORS[task.role] || "#334155";
 
   return (
-    <div
-      onClick={onClick}
-      style={{
-        background: "#161622",
-        border: "1px solid #1E293B",
-        borderRadius: 16,
-        padding: "14px 14px 12px",
-        cursor: "pointer",
-        transition: "border-color .15s ease, transform .15s ease, box-shadow .15s ease",
-        boxShadow: "0 1px 0 rgba(255,255,255,0.02) inset",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#334155";
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,.18)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#1E293B";
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.02) inset";
-      }}
-    >
+    <>
       <div
         style={{
           display: "flex",
@@ -311,6 +292,67 @@ function KanbanCard({ task, onClick }) {
           </span>
         )}
       </div>
+    </>
+  );
+}
+
+function SortableKanbanCard({ task, onClick }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    data: {
+      type: "task",
+      taskId: task.id,
+      columnId: task.status || "todo",
+    },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.55 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div
+        onClick={onClick}
+        {...attributes}
+        {...listeners}
+        style={{
+          background: "#161622",
+          border: "1px solid #1E293B",
+          borderRadius: 16,
+          padding: "14px 14px 12px",
+          cursor: "grab",
+          transition: "border-color .15s ease, transform .15s ease, box-shadow .15s ease",
+          boxShadow: isDragging
+            ? "0 14px 28px rgba(0,0,0,.24)"
+            : "0 1px 0 rgba(255,255,255,0.02) inset",
+        }}
+        onMouseEnter={(e) => {
+          if (!isDragging) {
+            e.currentTarget.style.borderColor = "#334155";
+            e.currentTarget.style.transform = "translateY(-1px)";
+            e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,.18)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isDragging) {
+            e.currentTarget.style.borderColor = "#1E293B";
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.02) inset";
+          }
+        }}
+      >
+        <KanbanCardContent task={task} />
+      </div>
     </div>
   );
 }
@@ -371,23 +413,11 @@ function Column({ column, tasks, onCreate, onSelect }) {
       >
         <span style={{ color: column.color, fontSize: 11 }}>▼</span>
 
-        <span
-          style={{
-            color: column.color,
-            fontWeight: 700,
-            fontSize: 12,
-          }}
-        >
+        <span style={{ color: column.color, fontWeight: 700, fontSize: 12 }}>
           {column.label}
         </span>
 
-        <span
-          style={{
-            marginLeft: "auto",
-            color: "#94A3B8",
-            fontSize: 12,
-          }}
-        >
+        <span style={{ marginLeft: "auto", color: "#94A3B8", fontSize: 12 }}>
           {tasks.length}
         </span>
 
@@ -414,15 +444,24 @@ function Column({ column, tasks, onCreate, onSelect }) {
           background: "rgba(255,255,255,0.02)",
         }}
       >
-        {tasks.length > 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {tasks.map((task) => (
-              <KanbanCard key={task.id} task={task} onClick={() => onSelect(task)} />
-            ))}
-          </div>
-        ) : (
-          <EmptyColumnState text={column.empty} onCreate={onCreate} />
-        )}
+        <SortableContext
+          items={tasks.map((task) => task.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {tasks.length > 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {tasks.map((task) => (
+                <SortableKanbanCard
+                  key={task.id}
+                  task={task}
+                  onClick={() => onSelect(task)}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyColumnState text={column.empty} onCreate={onCreate} />
+          )}
+        </SortableContext>
 
         <button
           onClick={onCreate}
@@ -707,6 +746,20 @@ function TimelineView({ tasks }) {
   );
 }
 
+function findTaskById(tasks, id) {
+  return tasks.find((task) => task.id === id) || null;
+}
+
+function getColumnIdByTarget(tasks, overId) {
+  if (!overId) return null;
+
+  const column = COLUMNS.find((c) => c.id === overId);
+  if (column) return column.id;
+
+  const overTask = findTaskById(tasks, overId);
+  return overTask?.status || null;
+}
+
 export default function TaskBoardPage() {
   const [tasks, setTasks] = useState([]);
   const [view, setView] = useState("board");
@@ -718,6 +771,15 @@ export default function TaskBoardPage() {
     const saved = safeParse(localStorage.getItem(STORAGE_KEY), []);
     setTasks(saved.map((t) => ({ ...t, status: t.status || "todo" })));
   }, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const updateTasks = (updated) => {
     setTasks(updated);
@@ -781,6 +843,39 @@ export default function TaskBoardPage() {
   };
 
   const hasFilters = filter !== "all" || query.trim().length > 0;
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeTask = findTaskById(tasks, active.id);
+    if (!activeTask) return;
+
+    const targetColumnId = getColumnIdByTarget(tasks, over.id);
+    if (!targetColumnId) return;
+
+    const nextTasks = [...tasks];
+    const activeIndex = nextTasks.findIndex((task) => task.id === active.id);
+    const overTask = findTaskById(nextTasks, over.id);
+
+    if (!overTask) {
+      nextTasks[activeIndex] = { ...nextTasks[activeIndex], status: targetColumnId };
+      updateTasks(nextTasks);
+      return;
+    }
+
+    const overIndex = nextTasks.findIndex((task) => task.id === over.id);
+
+    if (activeTask.status === overTask.status) {
+      const reordered = arrayMove(nextTasks, activeIndex, overIndex);
+      updateTasks(reordered);
+      return;
+    }
+
+    nextTasks[activeIndex] = { ...nextTasks[activeIndex], status: overTask.status };
+    const moved = arrayMove(nextTasks, activeIndex, overIndex);
+    updateTasks(moved);
+  };
 
   return (
     <div
@@ -1057,17 +1152,23 @@ export default function TaskBoardPage() {
           {filtered.length === 0 ? (
             <EmptyBoardState onCreate={createTask} hasFilter={hasFilters} />
           ) : view === "board" ? (
-            <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 14 }}>
-              {COLUMNS.map((column) => (
-                <Column
-                  key={column.id}
-                  column={column}
-                  tasks={filtered.filter((t) => (t.status || "todo") === column.id)}
-                  onCreate={() => createTask(column.id)}
-                  onSelect={setSelected}
-                />
-              ))}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 14 }}>
+                {COLUMNS.map((column) => (
+                  <Column
+                    key={column.id}
+                    column={column}
+                    tasks={filtered.filter((t) => (t.status || "todo") === column.id)}
+                    onCreate={() => createTask(column.id)}
+                    onSelect={setSelected}
+                  />
+                ))}
+              </div>
+            </DndContext>
           ) : (
             <TimelineView tasks={filtered} />
           )}
