@@ -34,10 +34,10 @@ const ROLE_COLORS = {
 };
 
 const COLUMNS = [
-  { id: "todo", label: "Not Started", color: "#A1A1AA" },
-  { id: "inprogress", label: "In Progress", color: "#F59E0B" },
-  { id: "review", label: "On Review", color: "#FB7185" },
-  { id: "done", label: "Completed", color: "#4ADE80" },
+  { id: "todo", label: "Not Started", color: "#A1A1AA", empty: "Nothing planned yet" },
+  { id: "inprogress", label: "In Progress", color: "#F59E0B", empty: "No active execution" },
+  { id: "review", label: "On Review", color: "#FB7185", empty: "Nothing waiting review" },
+  { id: "done", label: "Completed", color: "#4ADE80", empty: "Nothing shipped yet" },
 ];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
@@ -87,6 +87,38 @@ function Avatar() {
   );
 }
 
+function IconButton({ children, onClick, title }) {
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      style={{
+        background: "#161622",
+        border: "1px solid #1E293B",
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        cursor: "pointer",
+        color: "#64748B",
+        fontSize: 14,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = "#334155";
+        e.currentTarget.style.color = "#CBD5E1";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = "#1E293B";
+        e.currentTarget.style.color = "#64748B";
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function TopStat({ label, value, total, color }) {
   return (
     <div style={{ textAlign: "center", minWidth: 120 }}>
@@ -131,29 +163,67 @@ function KanbanCard({ task, onClick }) {
         borderRadius: 16,
         padding: "14px 14px 12px",
         cursor: "pointer",
-        transition: "border-color .15s ease, transform .15s ease",
+        transition: "border-color .15s ease, transform .15s ease, box-shadow .15s ease",
         boxShadow: "0 1px 0 rgba(255,255,255,0.02) inset",
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = "#334155";
         e.currentTarget.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = "0 10px 20px rgba(0,0,0,.18)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.borderColor = "#1E293B";
         e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 1px 0 rgba(255,255,255,0.02) inset";
       }}
     >
       <div
         style={{
-          fontSize: 13,
-          fontWeight: 700,
-          color: "#F8FAFC",
-          lineHeight: 1.45,
-          marginBottom: 12,
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 8,
+          marginBottom: 10,
         }}
       >
-        {task.title}
+        <div
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: priorityColor,
+            marginTop: 5,
+            flexShrink: 0,
+          }}
+        />
+        <div
+          style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: "#F8FAFC",
+            lineHeight: 1.45,
+            flex: 1,
+          }}
+        >
+          {task.title}
+        </div>
       </div>
+
+      {task.notes && (
+        <div
+          style={{
+            fontSize: 11,
+            color: "#64748B",
+            lineHeight: 1.5,
+            marginBottom: 12,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {task.notes}
+        </div>
+      )}
 
       {totalCount > 0 && (
         <div style={{ marginBottom: 12 }}>
@@ -245,6 +315,37 @@ function KanbanCard({ task, onClick }) {
   );
 }
 
+function EmptyColumnState({ text, onCreate }) {
+  return (
+    <div
+      style={{
+        border: "1px dashed #2A3445",
+        background: "rgba(255,255,255,.015)",
+        borderRadius: 14,
+        padding: "18px 14px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#475569", marginBottom: 10 }}>{text}</div>
+      <button
+        onClick={onCreate}
+        style={{
+          background: "transparent",
+          border: "1px solid #1E293B",
+          color: "#94A3B8",
+          borderRadius: 10,
+          padding: "8px 12px",
+          fontSize: 12,
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        Create first task
+      </button>
+    </div>
+  );
+}
+
 function Column({ column, tasks, onCreate, onSelect }) {
   return (
     <div
@@ -313,11 +414,15 @@ function Column({ column, tasks, onCreate, onSelect }) {
           background: "rgba(255,255,255,0.02)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {tasks.map((task) => (
-            <KanbanCard key={task.id} task={task} onClick={() => onSelect(task)} />
-          ))}
-        </div>
+        {tasks.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {tasks.map((task) => (
+              <KanbanCard key={task.id} task={task} onClick={() => onSelect(task)} />
+            ))}
+          </div>
+        ) : (
+          <EmptyColumnState text={column.empty} onCreate={onCreate} />
+        )}
 
         <button
           onClick={onCreate}
@@ -346,6 +451,55 @@ function Column({ column, tasks, onCreate, onSelect }) {
           + New card
         </button>
       </div>
+    </div>
+  );
+}
+
+function EmptyBoardState({ onCreate, hasFilter }) {
+  return (
+    <div
+      style={{
+        background: "#0E0E1A",
+        border: "1px solid #1E293B",
+        borderRadius: 20,
+        padding: "40px 24px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: 34, marginBottom: 10 }}>✦</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "#F8FAFC", marginBottom: 8 }}>
+        {hasFilter ? "Nothing matches this filter" : "No tasks yet"}
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          color: "#64748B",
+          lineHeight: 1.6,
+          maxWidth: 420,
+          margin: "0 auto 16px",
+        }}
+      >
+        {hasFilter
+          ? "Try another role or search query, or create a new task directly on the board."
+          : "Start with one real task, then break it down in the PM chat and manage execution here."}
+      </div>
+
+      <button
+        onClick={() => onCreate("todo")}
+        style={{
+          background: "linear-gradient(135deg, #1D4ED8, #1E40AF)",
+          border: "1px solid #1D4ED8",
+          color: "#fff",
+          borderRadius: 12,
+          padding: "11px 16px",
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: "pointer",
+          fontFamily: "inherit",
+        }}
+      >
+        + Create task
+      </button>
     </div>
   );
 }
@@ -558,6 +712,7 @@ export default function TaskBoardPage() {
   const [view, setView] = useState("board");
   const [filter, setFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const saved = safeParse(localStorage.getItem(STORAGE_KEY), []);
@@ -603,7 +758,20 @@ export default function TaskBoardPage() {
     return ["all", ...new Set(tasks.map((t) => t.role).filter(Boolean))];
   }, [tasks]);
 
-  const filtered = filter === "all" ? tasks : tasks.filter((t) => t.role === filter);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+
+    return tasks.filter((t) => {
+      const roleOk = filter === "all" ? true : t.role === filter;
+      const queryOk =
+        !q ||
+        (t.title || "").toLowerCase().includes(q) ||
+        (t.notes || "").toLowerCase().includes(q) ||
+        (t.role || "").toLowerCase().includes(q);
+
+      return roleOk && queryOk;
+    });
+  }, [tasks, filter, query]);
 
   const counts = {
     todo: tasks.filter((t) => (t.status || "todo") === "todo").length,
@@ -611,6 +779,8 @@ export default function TaskBoardPage() {
     review: tasks.filter((t) => (t.status || "todo") === "review").length,
     done: tasks.filter((t) => (t.status || "todo") === "done").length,
   };
+
+  const hasFilters = filter !== "all" || query.trim().length > 0;
 
   return (
     <div
@@ -628,6 +798,7 @@ export default function TaskBoardPage() {
         ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
         button, input, textarea, select { font-family: inherit; }
         a { color: inherit; text-decoration: none; }
+        input::placeholder { color: #475569; }
       `}</style>
 
       <div
@@ -737,20 +908,9 @@ export default function TaskBoardPage() {
               ))}
             </div>
 
-            <button
-              style={{
-                background: "#161622",
-                border: "1px solid #1E293B",
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                cursor: "pointer",
-                color: "#64748B",
-                fontSize: 16,
-              }}
-            >
-              ⌕
-            </button>
+            <IconButton title="Create task" onClick={() => createTask("todo")}>
+              +
+            </IconButton>
           </div>
         </div>
 
@@ -770,43 +930,133 @@ export default function TaskBoardPage() {
             <TopStat label="Completed" value={counts.done} total={tasks.length} color="#4ADE80" />
           </div>
 
-          {roles.length > 1 && (
+          <div
+            style={{
+              display: "flex",
+              gap: 10,
+              flexWrap: "wrap",
+              alignItems: "center",
+              marginBottom: 18,
+            }}
+          >
             <div
               style={{
+                flex: "1 1 280px",
+                minWidth: 240,
                 display: "flex",
-                gap: 8,
-                overflowX: "auto",
-                paddingBottom: 10,
-                marginBottom: 18,
+                alignItems: "center",
+                gap: 10,
+                background: "#161622",
+                border: "1px solid #1E293B",
+                borderRadius: 14,
+                padding: "0 12px",
+                height: 42,
               }}
             >
-              {roles.map((role) => {
-                const active = filter === role;
-                const color = ROLE_COLORS[role] || "#334155";
-
-                return (
-                  <button
-                    key={role}
-                    onClick={() => setFilter(role)}
-                    style={{
-                      background: active ? `${color}20` : "transparent",
-                      border: `1px solid ${active ? color : "#1E293B"}`,
-                      color: active ? "#E2E8F0" : "#64748B",
-                      padding: "8px 12px",
-                      borderRadius: 999,
-                      fontSize: 12,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {role === "all" ? "All roles" : role}
-                  </button>
-                );
-              })}
+              <span style={{ color: "#475569", fontSize: 14 }}>⌕</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search tasks, notes, roles..."
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "#E2E8F0",
+                  fontSize: 13,
+                }}
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "#475569",
+                    cursor: "pointer",
+                    fontSize: 13,
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
-          )}
 
-          {view === "board" ? (
+            {roles.length > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  overflowX: "auto",
+                  paddingBottom: 2,
+                }}
+              >
+                {roles.map((role) => {
+                  const active = filter === role;
+                  const color = ROLE_COLORS[role] || "#334155";
+
+                  return (
+                    <button
+                      key={role}
+                      onClick={() => setFilter(role)}
+                      style={{
+                        background: active ? `${color}20` : "transparent",
+                        border: `1px solid ${active ? color : "#1E293B"}`,
+                        color: active ? "#E2E8F0" : "#64748B",
+                        padding: "8px 12px",
+                        borderRadius: 999,
+                        fontSize: 12,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {role === "all" ? "All roles" : role}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+              marginBottom: 14,
+            }}
+          >
+            <div style={{ fontSize: 12, color: "#64748B" }}>
+              {filtered.length} visible tasks
+            </div>
+
+            {hasFilters && (
+              <button
+                onClick={() => {
+                  setFilter("all");
+                  setQuery("");
+                }}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #1E293B",
+                  color: "#94A3B8",
+                  borderRadius: 10,
+                  padding: "7px 10px",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                Reset filters
+              </button>
+            )}
+          </div>
+
+          {filtered.length === 0 ? (
+            <EmptyBoardState onCreate={createTask} hasFilter={hasFilters} />
+          ) : view === "board" ? (
             <div style={{ display: "flex", gap: 18, overflowX: "auto", paddingBottom: 14 }}>
               {COLUMNS.map((column) => (
                 <Column
