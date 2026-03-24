@@ -121,7 +121,9 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
   );
 
   const totalCount = (t?.subtasks || []).length;
-  const progress = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+  const progress =
+    totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
   const priorityColor = PRIORITY_COLORS[t?.priority] || "#F59E0B";
   const roleColor = ROLE_COLORS[t?.role] || "#334155";
 
@@ -141,18 +143,18 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-  style={{
-  width: "100%",
-  maxWidth: 760,
-  height: "100dvh",
-  background: "#0C0C14",
-  borderLeft: "1px solid #1E293B",
-  display: "flex",
-  flexDirection: "column",
-  boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
-  boxSizing: "border-box",
-  overflowX: "hidden",
-  }}
+        style={{
+          width: "100%",
+          maxWidth: 760,
+          height: "100dvh",
+          background: "#0C0C14",
+          borderLeft: "1px solid #1E293B",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
+          boxSizing: "border-box",
+          overflowX: "hidden",
+        }}
       >
         <div
           style={{
@@ -194,13 +196,13 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
         </div>
 
         <div
-  style={{
-  flex: 1,
-  overflowY: "auto",
-  overflowX: "hidden",
-  padding: "18px 16px 24px",
-  boxSizing: "border-box",
-  }}
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: "18px 16px 24px",
+            boxSizing: "border-box",
+          }}
         >
           <div style={{ marginBottom: 18 }}>
             <FieldLabel>Title</FieldLabel>
@@ -211,6 +213,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               placeholder="Task title"
               style={{
                 width: "100%",
+                boxSizing: "border-box",
                 background: "#161622",
                 border: "1px solid #1E293B",
                 borderRadius: 16,
@@ -229,18 +232,19 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+              gridTemplateColumns: "1fr 1fr",
               gap: 12,
               marginBottom: 18,
             }}
           >
-            <div>
+            <div style={{ minWidth: 0 }}>
               <FieldLabel>Status</FieldLabel>
               <select
                 value={t.status || "todo"}
                 onChange={(e) => save({ ...t, status: e.target.value })}
                 style={{
                   width: "100%",
+                  boxSizing: "border-box",
                   background: "#161622",
                   border: "1px solid #1E293B",
                   color: statusMeta.color,
@@ -261,13 +265,14 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               </select>
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <FieldLabel>Priority</FieldLabel>
               <select
                 value={t.priority || "medium"}
                 onChange={(e) => save({ ...t, priority: e.target.value })}
                 style={{
                   width: "100%",
+                  boxSizing: "border-box",
                   background: "#161622",
                   border: "1px solid #1E293B",
                   color: priorityColor,
@@ -286,13 +291,14 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               </select>
             </div>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <FieldLabel>Role</FieldLabel>
               <select
                 value={t.role || "PM"}
                 onChange={(e) => save({ ...t, role: e.target.value })}
                 style={{
                   width: "100%",
+                  boxSizing: "border-box",
                   background: "#161622",
                   border: "1px solid #1E293B",
                   color: roleColor,
@@ -317,107 +323,58 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr",
+              gridTemplateColumns: "1fr 1fr",
               gap: 12,
               marginBottom: 20,
             }}
           >
-    <div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: 12,
-    marginBottom: 20,
-  }}
->
-  <div style={{ minWidth: 0 }}>
-    <FieldLabel>Start Date</FieldLabel>
-    <input
-      type="date"
-      value={t.startDate || ""}
-      onChange={(e) => save({ ...t, startDate: e.target.value })}
-      style={{
-        width: "100%",
-        boxSizing: "border-box",
-        background: "#161622",
-        border: "1px solid #1E293B",
-        color: "#E2E8F0",
-        borderRadius: 12,
-        padding: "11px 12px",
-        fontSize: 13,
-        outline: "none",
-        fontFamily: "inherit",
-        textAlign: "center",
-        minHeight: 56,
-      }}
-    />
-  </div>
-
-  <div style={{ minWidth: 0 }}>
-    <FieldLabel>End Date</FieldLabel>
-    <input
-      type="date"
-      value={t.endDate || ""}
-      onChange={(e) => save({ ...t, endDate: e.target.value })}
-      style={{
-        width: "100%",
-        boxSizing: "border-box",
-        background: "#161622",
-        border: "1px solid #1E293B",
-        color: "#E2E8F0",
-        borderRadius: 12,
-        padding: "11px 12px",
-        fontSize: 13,
-        outline: "none",
-        fontFamily: "inherit",
-        textAlign: "center",
-        minHeight: 56,
-      }}
-    />
-  </div>
-
-  <div style={{ minWidth: 0, gridColumn: "1 / -1" }}>
-    <FieldLabel>Progress</FieldLabel>
-    <SurfaceInput style={{ padding: "11px 12px", minHeight: 74 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: 12,
-          color: "#94A3B8",
-          marginBottom: 8,
-        }}
-      >
-        <span>
-          {doneCount}/{totalCount || 0} done
-        </span>
-        <span>{progress}%</span>
-      </div>
-
-      <div
-        style={{
-          height: 5,
-          background: "#0C0C14",
-          borderRadius: 999,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            width: `${progress}%`,
-            height: "100%",
-            background: "#22C55E",
-            borderRadius: 999,
-          }}
-        />
-      </div>
-    </SurfaceInput>
-  </div>
-</div>
+            <div style={{ minWidth: 0 }}>
+              <FieldLabel>Start Date</FieldLabel>
+              <input
+                type="date"
+                value={t.startDate || ""}
+                onChange={(e) => save({ ...t, startDate: e.target.value })}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  background: "#161622",
+                  border: "1px solid #1E293B",
+                  color: "#E2E8F0",
+                  borderRadius: 12,
+                  padding: "11px 12px",
+                  fontSize: 13,
+                  outline: "none",
+                  fontFamily: "inherit",
+                  minHeight: 56,
+                }}
+              />
+            </div>
 
             <div style={{ minWidth: 0 }}>
-            <FieldLabel>Progress</FieldLabel>
-            <SurfaceInput style={{ padding: "11px 12px", minHeight: 74 }}>
+              <FieldLabel>End Date</FieldLabel>
+              <input
+                type="date"
+                value={t.endDate || ""}
+                onChange={(e) => save({ ...t, endDate: e.target.value })}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  background: "#161622",
+                  border: "1px solid #1E293B",
+                  color: "#E2E8F0",
+                  borderRadius: 12,
+                  padding: "11px 12px",
+                  fontSize: 13,
+                  outline: "none",
+                  fontFamily: "inherit",
+                  minHeight: 56,
+                }}
+              />
+            </div>
+
+            <div style={{ minWidth: 0, gridColumn: "1 / -1" }}>
+              <FieldLabel>Progress</FieldLabel>
+              <SurfaceInput style={{ padding: "11px 12px", minHeight: 74 }}>
                 <div
                   style={{
                     display: "flex",
@@ -463,6 +420,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               rows={5}
               style={{
                 width: "100%",
+                boxSizing: "border-box",
                 background: "#161622",
                 border: "1px solid #1E293B",
                 color: "#E2E8F0",
@@ -593,6 +551,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 placeholder="Add subtask..."
                 style={{
                   flex: 1,
+                  maxWidth: "100%",
                   background: "#161622",
                   border: "1px solid #1E293B",
                   color: "#E2E8F0",
@@ -726,29 +685,29 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           </div>
         </div>
 
-<style>{`
-  *, *::before, *::after {
-    box-sizing: border-box;
-  }
+        <style>{`
+          *, *::before, *::after {
+            box-sizing: border-box;
+          }
 
-  input, textarea, select, button {
-    max-width: 100%;
-  }
+          input, textarea, select, button {
+            max-width: 100%;
+          }
 
-  input[type="date"]::-webkit-calendar-picker-indicator {
-    filter: invert(.7);
-    cursor: pointer;
-  }
+          input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(.7);
+            cursor: pointer;
+          }
 
-  textarea::placeholder, input::placeholder {
-    color: #475569;
-  }
+          textarea::placeholder, input::placeholder {
+            color: #475569;
+          }
 
-  select option {
-    background: #161622;
-    color: #E2E8F0;
-  }
-`}</style>
+          select option {
+            background: #161622;
+            color: #E2E8F0;
+          }
+        `}</style>
       </div>
     </div>
   );
