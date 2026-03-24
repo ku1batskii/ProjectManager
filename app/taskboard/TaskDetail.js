@@ -329,7 +329,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 value={t.startDate || ""}
                 onChange={(e) => save({ ...t, startDate: e.target.value })}
                 style={{
-                  width: "100%",
+                  boxSizing: "border-box",
                   background: "#161622",
                   border: "1px solid #1E293B",
                   color: "#E2E8F0",
@@ -349,7 +349,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 value={t.endDate || ""}
                 onChange={(e) => save({ ...t, endDate: e.target.value })}
                 style={{
-                  width: "100%",
+                  boxSizing: "border-box",
                   background: "#161622",
                   border: "1px solid #1E293B",
                   color: "#E2E8F0",
