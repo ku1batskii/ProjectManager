@@ -144,7 +144,7 @@ function enforce(parsed, mode) {
   }
 
   // Truncate total
-  parsed.text = parsed.text.slice(0, 600);
+  parsed.text = parsed.text.slice(0, 1200);
 
   // CHAT: keep only last teaching block, limit main to 3 lines, add fallback teaching
   if (mode === "chat" && typeof parsed.text === "string") {
