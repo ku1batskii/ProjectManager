@@ -5,24 +5,38 @@ import Link from "next/link";
 
 const CONTENT = {
   en: {
-    nav_cta: "Start →",
+    nav_cta: "Get your first plan →",
     badge: "Early access · $4.99/mo",
     hero_title: "Stop guessing\nwhat to do next.",
     hero_sub: "Eduard turns your chaos into a clear execution plan in 60 seconds. AI Project Manager for solo builders.",
     hero_bullets: [
-      "Get a weekly sprint plan instantly",
-      "Break any idea into actionable tasks",
-      "Know what NOT to do — focus filter",
+      "Weekly sprint plan in one message",
+      "Any idea → actionable subtasks",
+      "Focus filter: what NOT to do",
     ],
     hero_cta: "Get your first plan →",
     hero_secondary: "See how it works",
     social_proof: "Used by 200+ solo founders this week",
+
     how_label: "HOW IT WORKS",
     how_steps: [
-      { n: "1", title: "Describe your situation", desc: "Tell Eduard what's happening — project, tasks, blockers, ideas. Any format." },
-      { n: "2", title: "Eduard analyzes it", desc: "He detects what mode you need: sprint, decomposition, brief, focus check, or report." },
-      { n: "3", title: "You get a clear plan", desc: "Actionable tasks, roles, priorities. Ready to execute. No thinking required." },
+      { n: "1", title: "Describe your situation", desc: "Tell Eduard what's happening — project, tasks, blockers, ideas. Any format, any length." },
+      { n: "2", title: "Eduard detects the mode", desc: "Sprint planning, task decomposition, brief, focus check, or report — he picks the right one." },
+      { n: "3", title: "You get a clear plan", desc: "Actionable tasks with roles and priorities. Ready to execute. No extra thinking required." },
     ],
+
+    talk_label: "HOW TO TALK TO EDUARD",
+    talk_desc: "Eduard understands natural language — just write like you'd message a teammate. Here are the triggers:",
+    talk_commands: [
+      { cmd: "спланируй спринт", label: "Sprint", desc: "Get a full week plan broken by day with roles and priorities" },
+      { cmd: "разбей задачу", label: "Decompose", desc: "Break any goal into 3–8 subtasks in execution order" },
+      { cmd: "напиши бриф", label: "Brief", desc: "Get a clean brief: goal, context, requirements, definition of done" },
+      { cmd: "стоит ли делать", label: "Focus", desc: "Get a sharp YES / NO / LATER with one clear reason" },
+      { cmd: "дай отчёт", label: "Report", desc: "Honest summary of what's done, blocked, and next" },
+      { cmd: "любой вопрос", label: "Chat", desc: "PM advice, strategy, anti-overthinking — straight answer in 3 lines" },
+    ],
+    talk_tip: "💡 Tip: The more context you give, the sharper the answer. Tell Eduard your project, audience, and current stage.",
+
     for_who_label: "BUILT FOR",
     for_who: [
       { emoji: "🛠", label: "Solo founders", desc: "Ship faster without drowning in tasks" },
@@ -30,18 +44,21 @@ const CONTENT = {
       { emoji: "🎬", label: "Influencers", desc: "Plan content, launches and collabs" },
       { emoji: "⚡", label: "Freelancers", desc: "Manage clients like a senior PM" },
     ],
+
     features_label: "WHAT YOU GET",
     features: [
-      { icon: "◈", title: "Weekly plan in 60 seconds", desc: "Describe your week — get a structured sprint plan with tasks by day, roles, and priorities." },
-      { icon: "◉", title: "Any idea → executable tasks", desc: "One message. Eduard breaks it into 3–8 subtasks with MVP flags. No overengineering." },
-      { icon: "◎", title: "Instant focus filter", desc: "Not sure if something is worth doing? YES / NO / LATER — with one clear reason." },
-      { icon: "◐", title: "Brief in one minute", desc: "Describe a feature → clean brief with goal, context, requirements, definition of done." },
-      { icon: "◑", title: "Honest weekly report", desc: "What's done. What's blocked. What's next. No sugarcoating." },
-      { icon: "◒", title: "Learn PM as you work", desc: "Every reply ends with one precise PM term definition. No courses needed." },
+      { icon: "◈", title: "Weekly plan in 60 seconds", desc: "Describe your week — get a sprint plan by day with roles, priorities, and what to skip." },
+      { icon: "◉", title: "Any idea → executable tasks", desc: "One message. Eduard breaks it into 3–8 subtasks in execution order. MVP slice first." },
+      { icon: "◎", title: "Instant focus filter", desc: "Not sure if something is worth doing? YES / NO / LATER with one clear reason." },
+      { icon: "◐", title: "Brief in one minute", desc: "Describe a feature → clean brief: goal, context, requirements, definition of done." },
+      { icon: "◑", title: "Honest weekly report", desc: "What's done. What's blocked. What's next. Eduard calls out weak ideas directly." },
+      { icon: "◒", title: "PM education built-in", desc: "Every reply ends with one practical PM term definition. Learn by doing, not reading." },
     ],
+
     demo_label: "SEE IT IN ACTION",
     demo_user: "Plan my sprint: launch landing, fix chat bugs, record product demo video, add analytics",
-    demo_reply: `Got it. Here's your week:\n\nMON — Design\n· Create landing wireframe\n· Record product demo (15 min)\n\nTUE — Frontend\n· Build landing page\n· Fix chat input bug\n\nWED — Frontend + Analytics\n· Deploy landing\n· Set up Vercel Analytics\n\nTHU — Content\n· Edit & publish demo video\n· Write launch tweet thread\n\nFRI — Buffer\n· Fix remaining bugs\n· Prep for launch Monday\n\nSkip for now: A/B testing, onboarding flow, mobile app\n\n— Sprint — a fixed time period (usually 1–2 weeks) during which a team executes a pre-agreed set of tasks.`,
+    demo_reply: `Got it. Here's your week:\n\nMon — Design\n· Create landing wireframe\n· Record product demo (15 min)\n\nTue — Frontend\n· Build landing page\n· Fix chat input bug\n\nWed — Frontend + Analytics\n· Deploy landing\n· Set up Vercel Analytics\n\nThu — Content\n· Edit & publish demo video\n· Write launch tweet thread\n\nFri — Buffer\n· Fix remaining bugs\n· Prep for launch Monday\n\nSkip for now: A/B testing, onboarding, mobile app\n\n— Sprint — a fixed time period during which a team executes a pre-agreed set of tasks and delivers a working result.`,
+
     pricing_label: "PRICING",
     pricing_tag: "EARLY ACCESS",
     pricing_price: "$4.99",
@@ -55,23 +72,27 @@ const CONTENT = {
       "Full session history saved",
       "PM education built-in",
     ],
+
     trust_quote: "Saved me 10+ hours/week. I finally know what to work on each morning.",
     trust_author: "— indie developer, building in public",
+
     faq_label: "FAQ",
     faq: [
       { q: "Do I need PM experience?", a: "No. Eduard explains every decision and teaches you PM thinking as you work." },
       { q: "What if I work alone?", a: "Perfect for that. Eduard assigns roles to show what type of work each task requires — even if you do everything yourself." },
       { q: "Is my data private?", a: "Yes. Each account is isolated. Your sessions and tasks are visible only to you." },
       { q: "Can I cancel anytime?", a: "Yes. No contracts. Cancel from your profile in one click." },
-      { q: "What's the early access price?", a: "Currently $4.99/mo. Price will increase as we add more features. Early users lock in this rate." },
+      { q: "What's the early access price?", a: "Currently $4.99/mo. Price will increase as we add features. Early users lock in this rate." },
     ],
+
     final_cta_title: "From chaos to clear plan.\nIn 60 seconds.",
     final_cta_btn: "Start free today →",
     footer: "PROJECTME · 2025 · Built by a solo founder, for solo founders",
     online: "online",
   },
+
   ru: {
-    nav_cta: "Начать →",
+    nav_cta: "Получить первый план →",
     badge: "Ранний доступ · $4.99/мес",
     hero_title: "Хватит гадать\nчто делать дальше.",
     hero_sub: "Эдуард превращает твой хаос в чёткий план действий за 60 секунд. AI Project Manager для соло-строителей.",
@@ -83,12 +104,26 @@ const CONTENT = {
     hero_cta: "Получить первый план →",
     hero_secondary: "Как это работает",
     social_proof: "Используют 200+ соло-фаундеров на этой неделе",
+
     how_label: "КАК ЭТО РАБОТАЕТ",
     how_steps: [
       { n: "1", title: "Опиши ситуацию", desc: "Расскажи Эдуарду что происходит — проект, задачи, блокеры, идеи. В любом формате." },
-      { n: "2", title: "Эдуард анализирует", desc: "Он определяет нужный режим: спринт, декомпозиция, бриф, фокус-чек или отчёт." },
+      { n: "2", title: "Эдуард определяет режим", desc: "Спринт, декомпозиция, бриф, фокус-чек или отчёт — он сам выбирает нужный." },
       { n: "3", title: "Ты получаешь план", desc: "Конкретные задачи, роли, приоритеты. Готово к выполнению. Думать не нужно." },
     ],
+
+    talk_label: "КАК ГОВОРИТЬ С ЭДУАРДОМ",
+    talk_desc: "Эдуард понимает обычный текст — пиши как коллеге. Вот ключевые команды:",
+    talk_commands: [
+      { cmd: "спланируй спринт", label: "Спринт", desc: "Получи план на неделю по дням с ролями и приоритетами" },
+      { cmd: "разбей задачу", label: "Декомпозиция", desc: "Разбей любую цель на 3–8 подзадач в порядке выполнения" },
+      { cmd: "напиши бриф", label: "Бриф", desc: "Чёткий бриф: цель, контекст, требования, критерии готовности" },
+      { cmd: "стоит ли делать", label: "Фокус", desc: "Получи ДА / НЕТ / ПОТОМ с одной чёткой причиной" },
+      { cmd: "дай отчёт", label: "Отчёт", desc: "Честная сводка: что сделано, что застряло, что дальше" },
+      { cmd: "любой вопрос", label: "Чат", desc: "PM-совет, стратегия, антипрокрастинация — прямой ответ в 3 строки" },
+    ],
+    talk_tip: "💡 Совет: чем больше контекста ты даёшь — тем точнее ответ. Расскажи Эдуарду о проекте, аудитории и текущей стадии.",
+
     for_who_label: "ДЛЯ КОГО",
     for_who: [
       { emoji: "🛠", label: "Соло-фаундеры", desc: "Запускайте быстрее без хаоса задач" },
@@ -96,18 +131,21 @@ const CONTENT = {
       { emoji: "🎬", label: "Инфлюенсеры", desc: "Планируйте контент и запуски продуктов" },
       { emoji: "⚡", label: "Фрилансеры", desc: "Управляйте клиентами как senior PM" },
     ],
+
     features_label: "ЧТО ТЫ ПОЛУЧАЕШЬ",
     features: [
-      { icon: "◈", title: "Недельный план за 60 секунд", desc: "Опиши неделю — получи структурированный спринт с задачами по дням, ролями и приоритетами." },
-      { icon: "◉", title: "Любая идея → задачи", desc: "Одно сообщение. Эдуард разбивает на 3–8 подзадач с MVP-флагами. Без оверинжиниринга." },
-      { icon: "◎", title: "Мгновенный фокус-фильтр", desc: "Не уверен стоит ли делать? ДА / НЕТ / ПОТОМ — с одной чёткой причиной." },
+      { icon: "◈", title: "Недельный план за 60 секунд", desc: "Опиши неделю — получи спринт по дням с ролями, приоритетами и тем что пропустить." },
+      { icon: "◉", title: "Любая идея → задачи", desc: "Одно сообщение. Эдуард разбивает на 3–8 подзадач в порядке выполнения. MVP-срез первым." },
+      { icon: "◎", title: "Мгновенный фокус-фильтр", desc: "Не уверен стоит ли делать? ДА / НЕТ / ПОТОМ с одной чёткой причиной." },
       { icon: "◐", title: "Бриф за одну минуту", desc: "Опиши фичу → готовый бриф: цель, контекст, требования, критерии готовности." },
-      { icon: "◑", title: "Честный недельный отчёт", desc: "Что сделано. Что застряло. Что дальше. Без прикрас." },
-      { icon: "◒", title: "Учись PM в процессе работы", desc: "Каждый ответ заканчивается точным определением PM-термина. Курсы не нужны." },
+      { icon: "◑", title: "Честный недельный отчёт", desc: "Что сделано. Что застряло. Что дальше. Эдуард говорит прямо, без прикрас." },
+      { icon: "◒", title: "PM-образование встроено", desc: "Каждый ответ заканчивается точным определением PM-термина. Учишься в процессе." },
     ],
+
     demo_label: "ПОСМОТРИ КАК ЭТО РАБОТАЕТ",
     demo_user: "Спланируй спринт: запустить лендинг, починить баги чата, записать демо-видео, добавить аналитику",
-    demo_reply: `Понял. Вот твоя неделя:\n\nПН — Design\n· Сделать вайрфрейм лендинга\n· Записать демо-видео (15 мин)\n\nВТ — Frontend\n· Собрать лендинг\n· Починить баг инпута в чате\n\nСР — Frontend + Analytics\n· Задеплоить лендинг\n· Настроить Vercel Analytics\n\nЧТ — Content\n· Смонтировать и опубликовать видео\n· Написать тред про запуск\n\nПТ — Буфер\n· Дофиксить оставшиеся баги\n· Подготовиться к запуску в пн\n\nОтложить: A/B тесты, онбординг, мобильное приложение\n\n— Спринт — фиксированный период времени (обычно 1–2 недели), за который команда выполняет заранее согласованный набор задач.`,
+    demo_reply: `Понял. Вот твоя неделя:\n\nПн — Design\n· Сделать вайрфрейм лендинга\n· Записать демо-видео (15 мин)\n\nВт — Frontend\n· Собрать лендинг\n· Починить баг инпута в чате\n\nСр — Frontend + Analytics\n· Задеплоить лендинг\n· Настроить Vercel Analytics\n\nЧт — Content\n· Смонтировать и опубликовать видео\n· Написать тред про запуск\n\nПт — Буфер\n· Дофиксить баги\n· Подготовиться к запуску в пн\n\nОтложить: A/B тесты, онбординг, мобильное приложение\n\n— Спринт — фиксированный период времени, за который команда выполняет согласованный набор задач и выдаёт рабочий результат.`,
+
     pricing_label: "ЦЕНА",
     pricing_tag: "РАННИЙ ДОСТУП",
     pricing_price: "$4.99",
@@ -121,8 +159,10 @@ const CONTENT = {
       "Полная история сессий",
       "PM-образование встроено",
     ],
+
     trust_quote: "Экономлю 10+ часов в неделю. Наконец знаю что делать каждое утро.",
     trust_author: "— инди-разработчик, строю в паблике",
+
     faq_label: "ВОПРОСЫ",
     faq: [
       { q: "Нужен ли опыт в PM?", a: "Нет. Эдуард объясняет каждое решение и учит PM-мышлению в процессе работы." },
@@ -131,6 +171,7 @@ const CONTENT = {
       { q: "Можно отменить в любой момент?", a: "Да. Никаких контрактов. Отмена в один клик из профиля." },
       { q: "Что такое цена раннего доступа?", a: "Сейчас $4.99/мес. Цена вырастет с добавлением новых функций. Ранние пользователи фиксируют эту ставку." },
     ],
+
     final_cta_title: "От хаоса к чёткому плану.\nЗа 60 секунд.",
     final_cta_btn: "Начать бесплатно →",
     footer: "PROJECTME · 2025 · Сделано соло-фаундером для соло-фаундеров",
@@ -150,7 +191,7 @@ export default function LandingPage() {
         ::selection { background: #1D4ED830; }
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 2px; }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
         .f1{animation:fadeUp .6s ease both}
         .f2{animation:fadeUp .6s .1s ease both}
@@ -164,6 +205,7 @@ export default function LandingPage() {
         .card{background:#0E0E1A;border:1px solid #1E293B;border-radius:14px;padding:24px;transition:border-color .2s}
         .card:hover{border-color:#334155}
         .faq-item{border-bottom:1px solid #1E293B;padding:20px 0}
+        .cmd-tag{background:#1D4ED815;border:1px solid #1D4ED830;color:#60A5FA;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;font-family:monospace;white-space:nowrap}
         @media(max-width:640px){
           .h1{font-size:36px!important}
           .grid3{grid-template-columns:1fr!important}
@@ -201,15 +243,10 @@ export default function LandingPage() {
             <div style={{ width:6, height:6, borderRadius:"50%", background:"#22C55E", animation:"pulse-dot 2s infinite" }}/>
             {t.badge}
           </div>
-
           <h1 className="f2 h1" style={{ fontSize:58, fontWeight:800, lineHeight:1.05, letterSpacing:-2, marginBottom:20, background:"linear-gradient(135deg, #F8FAFC 0%, #94A3B8 100%)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent", whiteSpace:"pre-line" }}>
             {t.hero_title}
           </h1>
-
-          <p className="f3" style={{ fontSize:18, color:"#64748B", lineHeight:1.7, maxWidth:500, margin:"0 auto 28px" }}>
-            {t.hero_sub}
-          </p>
-
+          <p className="f3" style={{ fontSize:18, color:"#64748B", lineHeight:1.7, maxWidth:500, margin:"0 auto 28px" }}>{t.hero_sub}</p>
           <div className="f4" style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, marginBottom:36 }}>
             {t.hero_bullets.map((b,i) => (
               <div key={i} style={{ display:"flex", alignItems:"center", gap:8, fontSize:14, color:"#94A3B8" }}>
@@ -217,12 +254,10 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-
           <div className="f5" style={{ display:"flex", gap:12, justifyContent:"center", flexWrap:"wrap", marginBottom:24 }}>
             <Link href="/pm-agent" className="cta">{t.hero_cta}</Link>
             <a href="#how" className="sec">{t.hero_secondary}</a>
           </div>
-
           <div style={{ fontSize:12, color:"#334155" }}>{t.social_proof}</div>
         </section>
 
@@ -237,6 +272,26 @@ export default function LandingPage() {
                 <div style={{ fontSize:13, color:"#64748B", lineHeight:1.6 }}>{s.desc}</div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* HOW TO TALK */}
+        <section style={{ marginBottom:100 }}>
+          <h2 style={{ fontSize:13, color:"#475569", letterSpacing:3, textTransform:"uppercase", marginBottom:16, textAlign:"center" }}>{t.talk_label}</h2>
+          <p style={{ fontSize:14, color:"#64748B", textAlign:"center", marginBottom:40, maxWidth:540, margin:"0 auto 40px" }}>{t.talk_desc}</p>
+          <div className="grid2" style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:12 }}>
+            {t.talk_commands.map((c,i) => (
+              <div key={i} style={{ background:"#0E0E1A", border:"1px solid #1E293B", borderRadius:12, padding:"16px 20px", display:"flex", gap:14, alignItems:"flex-start" }}>
+                <span className="cmd-tag">{c.cmd}</span>
+                <div>
+                  <div style={{ fontWeight:700, fontSize:13, marginBottom:4, color:"#E2E8F0" }}>{c.label}</div>
+                  <div style={{ fontSize:12, color:"#64748B", lineHeight:1.5 }}>{c.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop:24, background:"#0E0E1A", border:"1px solid #1E293B", borderRadius:12, padding:"14px 20px", fontSize:13, color:"#64748B", textAlign:"center" }}>
+            {t.talk_tip}
           </div>
         </section>
 
