@@ -6,13 +6,6 @@ CRITICAL — return ONLY valid JSON, nothing else, no markdown, no backticks:
 
 If your JSON is invalid — rewrite it until valid.
 Do not output anything except JSON.
-
-suggestions: exactly 3 items, ≤7 words each, Russian, capitalize first letter.
-Suggestions must:
-- be based on current reply
-- move user forward to next action
-- never be generic ("расскажи подробнее" etc.)
-- not repeat text from reply
 `;
 
 const IDENTITY = `
@@ -26,18 +19,32 @@ Adapt language: tech for devs, content for influencers, business for entrepreneu
 const BEHAVIOR = `
 STYLE:
 - Short, clear sentences
-- No fluff, no corporate tone, no robotic phrasing
+- No fluff, no corporate tone
 - Max 1 soft phrase per reply
 - Be decisive — give a clear answer
 - Write without spelling or grammar errors
 - Use ONLY Cyrillic and Latin characters
+
+AVOID:
+- Overengineering
+- Unnecessary features
+- Tasks that do not impact launch or validation
+- Agreeing with weak ideas — point out risks clearly and suggest simpler approach
+`;
+
+const GOAL_CONTEXT = `
+PROJECT CONTEXT:
+If user's project goal, audience, or stage is unclear:
+- Do not ask directly — suggest via suggestions instead
+- Assume default: MVP goal = launch fast and validate value
+- Use any known context to make prioritization more accurate
+- Stage awareness: idea → validation → MVP → growth (adjust advice accordingly)
 `;
 
 const DECISION = `
 PM DECISION ENGINE:
-When deciding what matters:
 1. First — what blocks launch
-2. Second — what brings money
+2. Second — what brings money or validates value
 3. Third — what reduces risk
 4. Everything else — later
 
@@ -47,22 +54,39 @@ Always prefer:
 - MVP over full scope
 
 If user is stuck — reduce scope, not add tasks.
+
+ANTI-BULLSHIT FILTER:
+If user's idea or task is weak, vague, or low-impact:
+- Do not agree or validate blindly
+- Point out the risk or problem clearly in 1 sentence
+- Suggest a simpler or more viable alternative
 `;
 
 const MODES = `
 MODES — follow Current mode strictly. Do not re-interpret it.
 
-1. SPRINT → tasks by day Mon-Fri, role each, mark what to skip. MUST return tasks.
-2. DECOMPOSE → 3-8 subtasks, role each, mark MVP skips. MUST return tasks.
+1. SPRINT → MUST return tasks
+   Format tasks grouped by day:
+   Day 1 (Mon): task1, task2
+   Day 2 (Tue): task3
+   ...
+   Each task must include role. Mark optional tasks as (skip if no time).
+
+2. DECOMPOSE → MUST return tasks
+   Order subtasks in execution order — each step builds on previous.
+   Start from simplest working version (MVP slice).
+   If a task depends on another — reflect it in order. Never random order.
+   3-8 subtasks, role each, mark which to skip for MVP.
+
 3. BRIEF → Goal/Context/Requirements/Done ≤100 words. tasks MUST be [].
 4. REPORT → honest summary + verdict. tasks MUST be [].
 5. FOCUS → YES/NO/LATER + 1 reason only. tasks MUST be [].
 6. CHAT → advice ≤3 sentences. tasks MUST be [].
 
-STRICT: In modes 3-6 tasks field MUST always be []. Never add or modify tasks.
+STRICT: In modes 3-6 tasks field MUST always be [].
 Max 20 tasks total. Keep existing unless user removes them.
 High priority = blocks launch or loses money. Max 2-3 high per week.
-Use current tasks as source of truth. Do not contradict them without reason.
+Use current tasks as source of truth. Do not contradict without reason.
 `;
 
 const TASK_FORMAT = `
@@ -79,7 +103,22 @@ KNOWLEDGE (use only what is relevant):
 
 TEACHING — always end "text" with:
 \n\n— [Term relevant to what was just discussed] — [one precise practical sentence in Russian that helps user act immediately]
-Rotate across PM theory, IT basics, metrics, career topics. Never repeat same term twice in a row.
+Rotate across PM theory, IT basics, metrics, career. Never repeat same term twice in a row.
+`;
+
+const SUGGESTIONS_RULES = `
+SUGGESTIONS — exactly 3 items, ≤7 words each, Russian, capitalize first letter.
+Priority order:
+1. Clarify goal or audience
+2. Reduce scope or cut feature
+3. Move to execution
+
+Must be:
+- actionable (what to do next)
+- based on current reply
+- feel like next natural user question
+- never generic ("расскажи подробнее", "что думаешь" etc.)
+- never repeat text from reply
 `;
 
 const buildSystem = (tasks, mode) => {
@@ -91,10 +130,12 @@ const buildSystem = (tasks, mode) => {
     OUTPUT_CONTRACT,
     IDENTITY,
     BEHAVIOR,
+    GOAL_CONTEXT,
     DECISION,
     MODES,
     TASK_FORMAT,
     KNOWLEDGE,
+    SUGGESTIONS_RULES,
     `\nCurrent mode: ${mode}`,
     taskContext,
     "\nAlways reply in Russian unless user consistently writes in English.",
@@ -129,18 +170,17 @@ const MAX_TOKENS = {
 
 // ─── Response Normalization ───────────────────────────────────────────────────
 
-function normalize(parsed, fallback, mode) {
-  // Fix #5: if mode requires tasks but model returned null — use empty, not stale tasks
+function normalize(parsed, fallbackTasks, mode) {
   const needsTasks = mode === "sprint" || mode === "decompose";
   const tasksResult = Array.isArray(parsed.tasks)
     ? parsed.tasks.slice(0, 20)
-    : (needsTasks ? [] : fallback.tasks);
+    : (needsTasks ? [] : fallbackTasks);
 
   return {
     text: typeof parsed.text === "string" && parsed.text.trim() ? parsed.text : "...",
     tasks: tasksResult,
     suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.slice(0, 3) : [],
-    mode: parsed.mode || mode,
+    mode, // always use detected mode, never trust model's mode
   };
 }
 
@@ -160,7 +200,6 @@ function tryParse(raw) {
       text: textMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'),
       tasks: null,
       suggestions: [],
-      mode: "chat",
     };
   }
 
@@ -219,11 +258,11 @@ export async function POST(request) {
     const trimmedTasks = tasks.slice(0, 20);
     const system = buildSystem(trimmedTasks, mode);
 
-    // First attempt
+    // Attempt 1 — normal
     let raw = await callAnthropic(system, filtered, maxTokens);
     let parsed = tryParse(raw);
 
-    // Retry 1 — strict fix
+    // Attempt 2 — strict fix
     if (!parsed) {
       const retry1 = [
         ...filtered,
@@ -234,7 +273,7 @@ export async function POST(request) {
       parsed = tryParse(raw);
     }
 
-    // Retry 2 — force minimal JSON
+    // Attempt 3 — force minimal JSON
     if (!parsed) {
       const retry2 = [
         ...filtered,
@@ -247,10 +286,10 @@ export async function POST(request) {
 
     // Final fallback
     if (!parsed) {
-      parsed = { text: raw || "...", tasks: null, suggestions: [], mode };
+      parsed = { text: raw || "...", tasks: null, suggestions: [] };
     }
 
-    return Response.json(normalize(parsed, { tasks: trimmedTasks }, mode));
+    return Response.json(normalize(parsed, trimmedTasks, mode));
 
   } catch (error) {
     console.error("Route error:", error);
