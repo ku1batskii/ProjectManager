@@ -322,47 +322,98 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               marginBottom: 20,
             }}
           >
-            <div>
-              <FieldLabel>Start Date</FieldLabel>
-              <input
-                type="date"
-                value={t.startDate || ""}
-                onChange={(e) => save({ ...t, startDate: e.target.value })}
-                style={{
-                  boxSizing: "border-box",
-                  background: "#161622",
-                  border: "1px solid #1E293B",
-                  color: "#E2E8F0",
-                  borderRadius: 12,
-                  padding: "11px 12px",
-                  fontSize: 13,
-                  outline: "none",
-                  fontFamily: "inherit",
-                   textAlign: "center",
-                }}
-              />
-            </div>
+    <div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: 12,
+    marginBottom: 20,
+  }}
+>
+  <div style={{ minWidth: 0 }}>
+    <FieldLabel>Start Date</FieldLabel>
+    <input
+      type="date"
+      value={t.startDate || ""}
+      onChange={(e) => save({ ...t, startDate: e.target.value })}
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        background: "#161622",
+        border: "1px solid #1E293B",
+        color: "#E2E8F0",
+        borderRadius: 12,
+        padding: "11px 12px",
+        fontSize: 13,
+        outline: "none",
+        fontFamily: "inherit",
+        textAlign: "center",
+        minHeight: 56,
+      }}
+    />
+  </div>
 
-            <div>
-              <FieldLabel>End Date</FieldLabel>
-              <input
-                type="date"
-                value={t.endDate || ""}
-                onChange={(e) => save({ ...t, endDate: e.target.value })}
-                style={{
-                  boxSizing: "border-box",
-                  background: "#161622",
-                  border: "1px solid #1E293B",
-                  color: "#E2E8F0",
-                  borderRadius: 12,
-                  padding: "11px 12px",
-                  fontSize: 13,
-                  outline: "none",
-                  fontFamily: "inherit",
-                   textAlign: "center",
-                }}
-              />
-            </div>
+  <div style={{ minWidth: 0 }}>
+    <FieldLabel>End Date</FieldLabel>
+    <input
+      type="date"
+      value={t.endDate || ""}
+      onChange={(e) => save({ ...t, endDate: e.target.value })}
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        background: "#161622",
+        border: "1px solid #1E293B",
+        color: "#E2E8F0",
+        borderRadius: 12,
+        padding: "11px 12px",
+        fontSize: 13,
+        outline: "none",
+        fontFamily: "inherit",
+        textAlign: "center",
+        minHeight: 56,
+      }}
+    />
+  </div>
+
+  <div style={{ minWidth: 0, gridColumn: "1 / -1" }}>
+    <FieldLabel>Progress</FieldLabel>
+    <SurfaceInput style={{ padding: "11px 12px", minHeight: 74 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 12,
+          color: "#94A3B8",
+          marginBottom: 8,
+        }}
+      >
+        <span>
+          {doneCount}/{totalCount || 0} done
+        </span>
+        <span>{progress}%</span>
+      </div>
+
+      <div
+        style={{
+          height: 5,
+          background: "#0C0C14",
+          borderRadius: 999,
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${progress}%`,
+            height: "100%",
+            background: "#22C55E",
+            borderRadius: 999,
+          }}
+        />
+      </div>
+    </SurfaceInput>
+  </div>
+</div>
 
             <div style={{ minWidth: 0 }}>
             <FieldLabel>Progress</FieldLabel>
