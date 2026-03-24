@@ -146,13 +146,16 @@ export default function PMAgent() {
 
   // ─── Greeting helper ───────────────────────────────────────────────────────
 
-  const fetchGreeting = useCallback(async () => {
-    const data = await callAPI([{ role: "user", content: "начни" }], []);
-    return {
-      text: data.text || "Привет! Я Эдуард — твой AI project manager. Чем займёмся?",
-      suggestions: data.suggestions || [],
-    };
-  }, []);
+const fetchGreeting = useCallback(async () => {
+  return {
+    text: "Привет. Я Эдуард — твой AI Project Manager.\nРасскажи что за проект и где сейчас застрял.\nНачнём с одного конкретного шага.\n\n— PM — человек (или система), который превращает цели в выполненные задачи через структуру и приоритеты.",
+    suggestions: [
+      "Спланируй спринт на неделю",
+      "Разбей большую задачу",
+      "Стоит ли делать это сейчас?",
+    ],
+  };
+}, []);
 
   // ─── Init ─────────────────────────────────────────────────────────────────
 
