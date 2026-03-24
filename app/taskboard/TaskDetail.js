@@ -324,11 +324,12 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
 
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 20,
-            }}
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 12,
+            marginBottom: 20,
+            alignItems: "end",
+          }}
           >
             <div style={{ minWidth: 0 }}>
               <FieldLabel>Start Date</FieldLabel>
@@ -336,20 +337,20 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 type="date"
                 value={t.startDate || ""}
                 onChange={(e) => save({ ...t, startDate: e.target.value })}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  background: "#161622",
-                  border: "1px solid #1E293B",
-                  color: "#E2E8F0",
-                  borderRadius: 12,
-                  padding: "11px 12px",
-                  fontSize: 13,
-                  outline: "none",
-                  fontFamily: "inherit",
-                  textAlign: "center",
-                  height: 56,
-                }}
+            style={{
+              width: "100%",
+              height: 56,
+              display: "block",
+              boxSizing: "border-box",
+              background: "#161622",
+              border: "1px solid #1E293B",
+              color: "#E2E8F0",
+              borderRadius: 12,
+              padding: "0 12px",
+              fontSize: 13,
+              outline: "none",
+              fontFamily: "inherit",
+             }}
               />
             </div>
 
@@ -360,19 +361,18 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 value={t.endDate || ""}
                 onChange={(e) => save({ ...t, endDate: e.target.value })}
                 style={{
-                  width: "100%",
+                 width: "100%",
+                  height: 56,
+                  display: "block",
                   boxSizing: "border-box",
                   background: "#161622",
                   border: "1px solid #1E293B",
                   color: "#E2E8F0",
                   borderRadius: 12,
-                  padding: "11px 12px",
+                  padding: "0 12px",
                   fontSize: 13,
                   outline: "none",
                   fontFamily: "inherit",
-                  textAlign: "center",
-                  height: 56,
-                  
                 }}
               />
             </div>
@@ -699,6 +699,11 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
 
           input, textarea, select, button {
             max-width: 100%;
+          }
+
+          input[type="date"] {
+          -webkit-appearance: none;
+          appearance: none;
           }
 
           input[type="date"]::-webkit-calendar-picker-indicator {
