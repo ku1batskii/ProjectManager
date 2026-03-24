@@ -225,7 +225,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
               gap: 12,
               marginBottom: 18,
             }}
@@ -313,7 +313,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
               gap: 12,
               marginBottom: 20,
             }}
