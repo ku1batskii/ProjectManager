@@ -133,27 +133,28 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
     <div
       onClick={onClose}
       style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        background: "#00000090",
-        display: "flex",
-        justifyContent: "flex-end",
+      position: "fixed",
+      inset: 0,
+      zIndex: 100,
+      background: "#00000090",
+      display: "flex",
+      justifyContent: "flex-end",
+      overflow: "hidden",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: "100%",
-          maxWidth: 760,
-          height: "100dvh",
-          background: "#0C0C14",
-          borderLeft: "1px solid #1E293B",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
-          boxSizing: "border-box",
-          overflowX: "hidden",
+        width: "100%",
+        maxWidth: "100vw",
+        height: "100dvh",
+        background: "#0C0C14",
+        borderLeft: "1px solid #1E293B",
+        display: "flex",
+        flexDirection: "column",
+        boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
+        boxSizing: "border-box",
+        overflowX: "hidden",
         }}
       >
         <div
@@ -291,7 +292,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
               </select>
             </div>
 
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, gridColumn: "1 / -1" }}>
               <FieldLabel>Role</FieldLabel>
               <select
                 value={t.role || "PM"}
