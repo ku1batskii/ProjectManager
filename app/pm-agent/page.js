@@ -334,11 +334,7 @@ const fetchGreeting = useCallback(async () => {
     setTimeout(() => setTasksBadge(0), 3000);
   }
 }
-        if (added > 0) {
-          setTasksBadge(added);
-          setTimeout(() => setTasksBadge(0), 3000);
-        }
-      }
+
 
       setSuggestions(Array.isArray(data.suggestions) ? data.suggestions.slice(0, 3) : []);
     } catch {
