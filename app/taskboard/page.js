@@ -802,7 +802,7 @@ const updateTasks = (next) => {
   }
 };
 
-  const createTask = (status = "todo") => {
+const createTask = (status = "todo") => {
   const newTask = {
     id: crypto.randomUUID(),
     title: "New task",
@@ -818,32 +818,41 @@ const updateTasks = (next) => {
   const next = [newTask, ...tasks];
   updateTasks(next);
   setSelected(newTask);
-  };
+};
 
-  const deleteTask = (id) => {
-    const next = tasks.filter((t) => t.id !== id);
-    updateTasks(next);
-    setSelected(null);
-  };
+const updateTask = (updated) => {
+  const next = tasks.map((t) =>
+    t.id === updated.id ? updated : t
+  );
 
-  const roles = useMemo(() => {
-    return ["all", ...new Set(tasks.map((t) => t.role).filter(Boolean))];
-  }, [tasks]);
+  updateTasks(next);
+  setSelected(next.find((t) => t.id === updated.id) || null);
+};
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+const deleteTask = (id) => {
+  const next = tasks.filter((t) => t.id !== id);
+  updateTasks(next);
+  setSelected(null);
+};
 
-    return tasks.filter((t) => {
-      const roleOk = filter === "all" ? true : t.role === filter;
-      const queryOk =
-        !q ||
-        (t.title || "").toLowerCase().includes(q) ||
-        (t.notes || "").toLowerCase().includes(q) ||
-        (t.role || "").toLowerCase().includes(q);
+const roles = useMemo(() => {
+  return ["all", ...new Set(tasks.map((t) => t.role).filter(Boolean))];
+}, [tasks]);
 
-      return roleOk && queryOk;
-    });
-  }, [tasks, filter, query]);
+const filtered = useMemo(() => {
+  const q = query.trim().toLowerCase();
+
+  return tasks.filter((t) => {
+    const roleOk = filter === "all" ? true : t.role === filter;
+    const queryOk =
+      !q ||
+      (t.title || "").toLowerCase().includes(q) ||
+      (t.notes || "").toLowerCase().includes(q) ||
+      (t.role || "").toLowerCase().includes(q);
+
+    return roleOk && queryOk;
+  });
+}, [tasks, filter, query]);
 
   const counts = {
     todo: tasks.filter((t) => (t.status || "todo") === "todo").length,
