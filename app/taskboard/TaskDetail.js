@@ -61,22 +61,50 @@ function SurfaceInput({ children, style }) {
   );
 }
 
+function normalizeTask(task) {
+  if (!task) return null;
+
+  return {
+    id: task.id || crypto.randomUUID(),
+    title: typeof task.title === "string" ? task.title : "New task",
+    status: task.status || "todo",
+    priority: task.priority || "medium",
+    role: task.role || "PM",
+    startDate: task.startDate || "",
+    endDate: task.endDate || "",
+    notes: task.notes || "",
+    subtasks: Array.isArray(task.subtasks)
+      ? task.subtasks.map((s, i) => ({
+          id: s?.id || `s_${Date.now()}_${i}`,
+          text: typeof s?.text === "string" ? s.text : "",
+          done: !!s?.done,
+        }))
+      : [],
+    impact: Number.isFinite(task.impact) ? task.impact : 3,
+    effort: Number.isFinite(task.effort) ? task.effort : 2,
+    urgency: Number.isFinite(task.urgency) ? task.urgency : 3,
+    progress: Number.isFinite(task.progress) ? task.progress : 0,
+    stage: task.stage || "mvp",
+  };
+}
+
 export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
-  const [t, setT] = useState(task);
+  const [t, setT] = useState(normalizeTask(task));
   const [newSubtask, setNewSubtask] = useState("");
 
   useEffect(() => {
-    setT(task);
+    setT(normalizeTask(task));
   }, [task]);
 
   const save = (updated) => {
-    setT(updated);
-    onUpdate(updated);
+    const safeUpdated = normalizeTask(updated);
+    setT(safeUpdated);
+    onUpdate(safeUpdated);
   };
 
   const addSubtask = () => {
     const value = newSubtask.trim();
-    if (!value) return;
+    if (!value || !t) return;
 
     const updated = {
       ...t,
@@ -95,6 +123,8 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
   };
 
   const toggleSubtask = (id) => {
+    if (!t) return;
+
     const updated = {
       ...t,
       subtasks: (t.subtasks || []).map((s) =>
@@ -105,6 +135,8 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
   };
 
   const deleteSubtask = (id) => {
+    if (!t) return;
+
     const updated = {
       ...t,
       subtasks: (t.subtasks || []).filter((s) => s.id !== id),
@@ -133,28 +165,28 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
     <div
       onClick={onClose}
       style={{
-      position: "fixed",
-      inset: 0,
-      zIndex: 100,
-      background: "#00000090",
-      display: "flex",
-      justifyContent: "flex-end",
-      overflow: "hidden",
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        background: "#00000090",
+        display: "flex",
+        justifyContent: "flex-end",
+        overflow: "hidden",
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-        width: "100%",
-        maxWidth: "100vw",
-        height: "100dvh",
-        background: "#0C0C14",
-        borderLeft: "1px solid #1E293B",
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
-        boxSizing: "border-box",
-        overflowX: "hidden",
+          width: "100%",
+          maxWidth: "100vw",
+          height: "100dvh",
+          background: "#0C0C14",
+          borderLeft: "1px solid #1E293B",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "-20px 0 60px rgba(0,0,0,.45)",
+          boxSizing: "border-box",
+          overflowX: "hidden",
         }}
       >
         <div
@@ -324,12 +356,12 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
 
           <div
             style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 12,
-            marginBottom: 20,
-            alignItems: "end",
-          }}
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+              marginBottom: 20,
+              alignItems: "end",
+            }}
           >
             <div style={{ minWidth: 0 }}>
               <FieldLabel>Start Date</FieldLabel>
@@ -337,20 +369,20 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 type="date"
                 value={t.startDate || ""}
                 onChange={(e) => save({ ...t, startDate: e.target.value })}
-            style={{
-              width: "100%",
-              height: 56,
-              display: "block",
-              boxSizing: "border-box",
-              background: "#161622",
-              border: "1px solid #1E293B",
-              color: "#E2E8F0",
-              borderRadius: 12,
-              padding: "0 12px",
-              fontSize: 13,
-              outline: "none",
-              fontFamily: "inherit",
-             }}
+                style={{
+                  width: "100%",
+                  height: 56,
+                  display: "block",
+                  boxSizing: "border-box",
+                  background: "#161622",
+                  border: "1px solid #1E293B",
+                  color: "#E2E8F0",
+                  borderRadius: 12,
+                  padding: "0 12px",
+                  fontSize: 13,
+                  outline: "none",
+                  fontFamily: "inherit",
+                }}
               />
             </div>
 
@@ -361,7 +393,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 value={t.endDate || ""}
                 onChange={(e) => save({ ...t, endDate: e.target.value })}
                 style={{
-                 width: "100%",
+                  width: "100%",
                   height: 56,
                   display: "block",
                   boxSizing: "border-box",
@@ -683,7 +715,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
                 padding: "10px 14px",
                 fontSize: 13,
                 fontWeight: 600,
-                 minWidth: 120,
+                minWidth: 120,
                 cursor: "pointer",
               }}
             >
@@ -692,7 +724,7 @@ export default function TaskDetail({ task, onClose, onUpdate, onDelete }) {
           </div>
         </div>
 
-<style>{`
+        <style>{`
   *, *::before, *::after {
     box-sizing: border-box;
   }
