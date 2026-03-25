@@ -230,8 +230,12 @@ const fetchGreeting = useCallback(async () => {
       setCurrentSessionId(session.id);
       setMessages([createMsg("assistant", text)]);
       setSuggestions(sugg);
-    } catch {
-      setMessages([createMsg("assistant", "Привет! Чем займёмся?")]);
+        } catch (err) {
+      console.error("Send error:", err);
+      setMessages((prev) => [
+        ...prev,
+        createMsg("assistant", `Ошибка: ${err?.message || "Неизвестная ошибка"}`),
+      ]);
     } finally {
       setLoading(false);
     }
