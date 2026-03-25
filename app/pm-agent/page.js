@@ -317,41 +317,32 @@ const fetchGreeting = useCallback(async () => {
 
       // Update tasks if returned
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
-const existing = tasks || [];
-const incoming = data.tasks;
+        const existing = tasks || [];
+        const incoming = data.tasks;
 
-// 🔥 убираем дубликаты по title
-const merged = [
-  ...existing,
-  ...incoming.filter(
-    (t) => !existing.some((e) => e.title === t.title)
-  ),
-];
+        // убираем дубликаты по title
+        const merged = [
+          ...existing,
+          ...incoming.filter(
+            (t) => !existing.some((e) => e.title === t.title)
+          ),
+        ];
 
-setTasks(merged);
+        setTasks(merged);
 
-// сохраняем
-try {
-  localStorage.setItem("pm_tasks", JSON.stringify(merged));
-} catch (e) {
-  console.error("Failed to save tasks", e);
-}
+        // сохраняем глобально
+        try {
+          localStorage.setItem("pm_tasks", JSON.stringify(merged));
+        } catch (e) {
+          console.error("Failed to save tasks", e);
+        }
 
-const added = merged.length - existing.length;
-if (added > 0) {
-  setTasksBadge(added);
-  setTimeout(() => setTasksBadge(0), 3000);
-}
-  } catch (e) {
-    console.error("Failed to save tasks", e);
-  }
-
-  const added = newTasks.length - tasks.length;
-  if (added > 0) {
-    setTasksBadge(added);
-    setTimeout(() => setTasksBadge(0), 3000);
-  }
-}
+        const added = merged.length - existing.length;
+        if (added > 0) {
+          setTasksBadge(added);
+          setTimeout(() => setTasksBadge(0), 3000);
+        }
+      }
 
 
       setSuggestions(Array.isArray(data.suggestions) ? data.suggestions.slice(0, 3) : []);
