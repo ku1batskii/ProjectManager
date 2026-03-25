@@ -804,10 +804,15 @@ export default function TaskBoardPage() {
     setSelected(newTask);
   };
 
-  const updateTask = (updated) => {
-    const next = tasks.map((t) => (t.id === updated.id ? updated : t));
-    updateTasks(next);
-    setSelected(next.find((t) => t.id === updated.id) || null);
+  const updateTasks = (next) => {
+    setTasks(next);
+
+  // 🔥 сохраняем в localStorage
+  try {
+    localStorage.setItem("pm_tasks", JSON.stringify(next));
+    } catch (e) {
+    console.error("Failed to save tasks", e);
+    }
   };
 
   const deleteTask = (id) => {
