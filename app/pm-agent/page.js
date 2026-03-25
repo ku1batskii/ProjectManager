@@ -317,13 +317,31 @@ const fetchGreeting = useCallback(async () => {
 
       // Update tasks if returned
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
-  const newTasks = data.tasks;
+const existing = tasks || [];
+const incoming = data.tasks;
 
-  setTasks(newTasks);
+// 🔥 убираем дубликаты по title
+const merged = [
+  ...existing,
+  ...incoming.filter(
+    (t) => !existing.some((e) => e.title === t.title)
+  ),
+];
 
-  // ✅ сохраняем глобально
-  try {
-    localStorage.setItem("pm_tasks", JSON.stringify(newTasks));
+setTasks(merged);
+
+// сохраняем
+try {
+  localStorage.setItem("pm_tasks", JSON.stringify(merged));
+} catch (e) {
+  console.error("Failed to save tasks", e);
+}
+
+const added = merged.length - existing.length;
+if (added > 0) {
+  setTasksBadge(added);
+  setTimeout(() => setTasksBadge(0), 3000);
+}
   } catch (e) {
     console.error("Failed to save tasks", e);
   }
