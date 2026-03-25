@@ -781,38 +781,32 @@ export default function TaskBoardPage() {
     })
   );
 
-  const updateTasks = (updated) => {
-    setTasks(updated);
-    saveTasks(updated);
-  };
+const updateTasks = (next) => {
+  setTasks(next);
 
-  const createTask = (status = "todo") => {
-    const newTask = {
-      id: crypto.randomUUID(),
-      title: "New task",
-      status,
-      priority: "medium",
-      role: "PM",
-      startDate: "",
-      endDate: "",
-      notes: "",
-      subtasks: [],
-    };
-
-    const next = [newTask, ...tasks];
-    updateTasks(next);
-    setSelected(newTask);
-  };
-
-  const updateTasks = (next) => {
-    setTasks(next);
-
-  // 🔥 сохраняем в localStorage
   try {
     localStorage.setItem("pm_tasks", JSON.stringify(next));
-    } catch (e) {
+  } catch (e) {
     console.error("Failed to save tasks", e);
-    }
+  }
+};
+
+  const createTask = (status = "todo") => {
+  const newTask = {
+    id: crypto.randomUUID(),
+    title: "New task",
+    status,
+    priority: "medium",
+    role: "PM",
+    startDate: "",
+    endDate: "",
+    notes: "",
+    subtasks: [],
+  };
+
+  const next = [newTask, ...tasks];
+  updateTasks(next);
+  setSelected(newTask);
   };
 
   const deleteTask = (id) => {
