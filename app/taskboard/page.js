@@ -768,8 +768,19 @@ export default function TaskBoardPage() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
+  const load = () => {
     const saved = safeParse(localStorage.getItem(STORAGE_KEY), []);
     setTasks(saved.map((t) => ({ ...t, status: t.status || "todo" })));
+  };
+
+  load();
+
+  // 🔥 обновление при возврате на вкладку
+  window.addEventListener("focus", load);
+
+  return () => {
+    window.removeEventListener("focus", load);
+  };
   }, []);
 
   const sensors = useSensors(
