@@ -317,8 +317,23 @@ const fetchGreeting = useCallback(async () => {
 
       // Update tasks if returned
       if (Array.isArray(data.tasks) && data.tasks.length > 0) {
-        const added = data.tasks.length - tasks.length;
-        setTasks(data.tasks);
+  const newTasks = data.tasks;
+
+  setTasks(newTasks);
+
+  // ✅ сохраняем глобально
+  try {
+    localStorage.setItem("pm_tasks", JSON.stringify(newTasks));
+  } catch (e) {
+    console.error("Failed to save tasks", e);
+  }
+
+  const added = newTasks.length - tasks.length;
+  if (added > 0) {
+    setTasksBadge(added);
+    setTimeout(() => setTasksBadge(0), 3000);
+  }
+}
         if (added > 0) {
           setTasksBadge(added);
           setTimeout(() => setTasksBadge(0), 3000);
