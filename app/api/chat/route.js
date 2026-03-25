@@ -164,9 +164,71 @@ function inferStage(messages) {
 }
 
 function wantsTaskCreation(text) {
-  return /(разбей|декомпоз|подзадач|создай\s*задач|добавь\s*задач|сделай\s*задач|сделай\s*таск|создай\s*таск|добавь\s*в\s*таскборд|добавь\s*на\s*доску|сделай\s*задачи\s*в\s*таскборде|покажи\s*в\s*таскборде|оформи\s*как\s*задачи|преврати\s*в\s*задачи|taskboard|таскборд|таймлайн|timeline|sprint|спринт|план\s*на\s*неделю|распиши\s*неделю|create\s*tasks|add\s*tasks|break\s*down|decompose|turn.*into.*tasks)/i.test(
-    text
-  );
+  const t = text.toLowerCase();
+
+  // 🔹 явные команды (самый сильный сигнал)
+  const strongTriggers = [
+    "разбей",
+    "декомпоз",
+    "подзадач",
+    "сделай задачи",
+    "создай задачи",
+    "добавь задачи",
+    "добавь в трекер",
+    "распиши задачи",
+  ];
+
+  if (strongTriggers.some((w) => t.includes(w))) return true;
+
+  // 🔹 слова про задачи
+  const taskWords = [
+    "задач",
+    "таск",
+    "task",
+    "todo",
+  ];
+
+  // 🔹 действия
+  const actionWords = [
+    "сделай",
+    "создай",
+    "добавь",
+    "распиши",
+    "сформируй",
+    "опиши",
+  ];
+
+  // 🔹 контекст проекта
+  const projectWords = [
+    "сайт",
+    "лендинг",
+    "приложение",
+    "проект",
+    "сервис",
+    "бот",
+    "продукт",
+  ];
+
+  const hasTaskWord = taskWords.some((w) => t.includes(w));
+  const hasAction = actionWords.some((w) => t.includes(w));
+  const hasProject = projectWords.some((w) => t.includes(w));
+
+  // 🔥 ключевая логика:
+  // 1. есть слово "задачи"
+  // 2. есть действие + проект
+  if (hasTaskWord) return true;
+  if (hasAction && hasProject) return true;
+
+  // 🔹 слабые сигналы (контекстные)
+  const softTriggers = [
+    "спринт",
+    "план",
+    "roadmap",
+  ];
+
+  if (softTriggers.some((w) => t.includes(w)) && hasProject) return true;
+
+  return false;
 }
 
 function wantsPlanOnly(text) {
@@ -519,7 +581,12 @@ export async function POST(request) {
     const inferredStage = context.stage || inferStage(filtered);
     const effectiveContext = { ...context, stage: inferredStage };
 
-    const mode = detectMode(filtered);
+    let mode = detectMode(filtered);
+const userText = filtered[filtered.length - 1]?.content || "";
+
+   if (wantsTaskCreation(userText)) {
+     mode = "decompose";
+    }
     const maxTokens = MAX_TOKENS[mode] || 900;
     const temp = TEMPERATURE[mode] || 0.3;
     const trimmedTasks = Array.isArray(tasks) ? tasks.slice(0, 30) : [];
