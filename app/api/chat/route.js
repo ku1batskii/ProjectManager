@@ -164,9 +164,35 @@ function inferStage(messages) {
 }
 
 function wantsTaskCreation(text) {
-  return /(разбей|декомпоз|подзадач|создай задач|добавь задач|сделай задач|таск(и|ов)?|список задач|turn .* into tasks|create tasks|decompose|break down|taskboard|таймлайн|timeline|спринт|план на неделю|распиши неделю)/i.test(
-    text
-  );
+  return /(
+    разбей|
+    декомпоз|
+    подзадач|
+    создай\s*задач|
+    добавь\s*задач|
+    сделай\s*задач|
+    сделай\s*таск|
+    создай\s*таск|
+    добавь\s*в\s*таскборд|
+    добавь\s*на\s*доску|
+    сделай\s*задачи\s*в\s*таскборде|
+    покажи\s*в\s*таскборде|
+    оформи\s*как\s*задачи|
+    преврати\s*в\s*задачи|
+    taskboard|
+    таскборд|
+    таймлайн|
+    timeline|
+    sprint|
+    спринт|
+    план\s*на\s*неделю|
+    распиши\s*неделю|
+    create\s*tasks|
+    add\s*tasks|
+    break\s*down|
+    decompose|
+    turn.*into.*tasks
+  )/ix.test(text);
 }
 
 function wantsPlanOnly(text) {
