@@ -562,22 +562,24 @@ export async function POST(request) {
       parsed = tryParse(raw);
     }
 
-    if (!parsed || !validateMode(parsed, mode)) {
-      raw = await callAnthropic(
-        strictSystem,
-        [
-          ...messagesWithHint,
-          {
-            role: "user",
-            content:
-              'Return minimal valid JSON now. If task creation was not explicitly requested, tasks must be [].',
-          },
-        ],
-        450,
-        0.1
-      );
-      parsed = tryParse(raw);
-    }
+if (!parsed || !validateMode(parsed, mode)) {
+  raw = await callAnthropic(
+    strictSystem,
+    [
+      ...messagesWithHint,
+      {
+        role: "user",
+        content:
+          mode === "decompose" || mode === "sprint"
+            ? 'Return valid JSON now. This is TASK CREATION mode. You MUST return at least 3 tasks in the "tasks" array. Each task must include: id, title, status:"todo", priority, role, subtasks. Do not return text-only.'
+            : 'Return minimal valid JSON now. If task creation was not explicitly requested, tasks must be [].',
+      },
+    ],
+    700,
+    0.1
+  );
+  parsed = tryParse(raw);
+}
 
     if (!parsed) {
       parsed = { text: raw || "...", tasks: [], suggestions: [] };
