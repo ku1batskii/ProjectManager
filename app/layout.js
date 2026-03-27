@@ -1,4 +1,3 @@
-import './globals.css';
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata = {
@@ -9,6 +8,7 @@ export const metadata = {
 export const viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
   interactiveWidget: "resizes-content",
 };
 
@@ -19,19 +19,26 @@ export default function RootLayout({ children }) {
         <ClerkProvider appearance={{
           variables: {
             colorBackground: "#0E0E1A",
-            colorPrimary: "#3B82F6",
             colorText: "#E2E8F0",
-            colorTextSecondary: "#94A3B8",
-            colorBorder: "#2a2a3e",
             colorInputBackground: "#161622",
-            colorInputBorder: "#334155",
-            colorSuccessText: "#10B981",
-            colorSuccess: "#10B981",
-            colorDanger: "#EF4444",
+            colorInputText: "#E2E8F0",
+            colorPrimary: "#1D4ED8",
+            colorTextSecondary: "#94A3B8",
+            colorNeutral: "#334155",
+            fontFamily: "'Sora', 'Segoe UI', sans-serif",
           },
           elements: {
-            rootBox: { background: "#0C0C14", color: "#E2E8F0" },
-            cardBox: { background: "#161622", borderColor: "#2a2a3e" },
+            card: {
+              background: "#0E0E1A",
+              border: "1px solid #1E293B",
+              boxShadow: "0 20px 60px #00000080",
+            },
+            headerTitle: { color: "#F8FAFC" },
+            headerSubtitle: { color: "#64748B" },
+            dividerLine: { background: "#1E293B" },
+            dividerText: { color: "#475569" },
+            formFieldLabel: { color: "#94A3B8" },
+            footerActionText: { color: "#64748B" },
             footerActionLink: { color: "#3B82F6" },
           }
         }}>
