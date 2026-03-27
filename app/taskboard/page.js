@@ -112,6 +112,33 @@ const getDayIndex = (date) => {
 
 function Avatar() {
   return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <div style={{ 
+        height: '60px', 
+        borderBottom: '1px solid #2a2a3e',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingLeft: '20px',
+        paddingRight: '20px',
+      }}>
+        <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#E2E8F0' }}>Tasks</h2>
+        <Link href="/pm-agent" style={{
+          padding: '8px 16px',
+          background: '#1e40af',
+          color: '#E2E8F0',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '13px',
+          fontWeight: 600,
+          textDecoration: 'none',
+        }}>PM Agent</Link>
+      </div>
+      {/* Main content */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+    (
     <div
       style={{
         width: 34,
