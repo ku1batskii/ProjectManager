@@ -95,7 +95,6 @@ const safeParse = (value, fallback) => {
     return Array.isArray(parsed) ? parsed : fallback;
   } catch {
     return fallback;
-  </>
   }
 };
 
@@ -1139,74 +1138,7 @@ const filtered = useMemo(() => {
                   const active = filter === role;
                   const color = ROLE_COLORS[role] || "#334155";
 
-                  return (<>
-      {/* ─── HEADER ─── */}
-      <div style={{
-        height: '60px',
-        borderBottom: '1px solid #2a2a3e',
-        background: '#0C0C14',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}>
-        <Link href="/pm-agent" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          color: '#60A5FA',
-          textDecoration: 'none',
-          fontSize: '14px',
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}>
-          ← PM Agent
-        </Link>
-        
-        <div style={{
-          fontSize: '16px',
-          fontWeight: 600,
-          color: '#E2E8F0',
-        }}>
-          Taskboard
-        </div>
-        
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-        }}>
-          <button style={{
-            padding: '8px 16px',
-            background: '#1a1a2e',
-            border: '1px solid #2a2a3e',
-            borderRadius: '6px',
-            color: '#E2E8F0',
-            fontSize: '13px',
-            cursor: 'pointer',
-            fontWeight: 600,
-          }} onClick={() => setView('board')}>
-            Board
-          </button>
-          <button style={{
-            padding: '8px 16px',
-            background: '#1a1a2e',
-            border: '1px solid #2a2a3e',
-            borderRadius: '6px',
-            color: '#E2E8F0',
-            fontSize: '13px',
-            cursor: 'pointer',
-            fontWeight: 600,
-          }} onClick={() => setView('timeline')}>
-            Timeline
-          </button>
-        </div>
-      </div>
-
-      {/* ─── CONTENT ─── */}
-      
+                  return (
                     <button
                       key={role}
                       onClick={() => setFilter(role)}
