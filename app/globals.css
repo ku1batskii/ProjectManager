@@ -1,0 +1,87 @@
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0C0C14;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #E2E8F0;
+}
+
+/* ── Desktop: 1920px layout ── */
+@media (min-width: 1920px) {
+  body {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  [data-sidebar] {
+    position: relative !important;
+    width: 280px;
+    height: 100vh;
+    border-right: 1px solid #2a2a3e;
+    overflow-y: auto;
+    padding: 20px 16px;
+    box-sizing: border-box;
+  }
+
+  [data-main] {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  [data-content] {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Чат-сообщения на десктопе - две колонки */
+  [data-messages-list] {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 100%;
+  }
+
+  [data-message] {
+    word-wrap: break-word;
+  }
+}
+
+/* ── Tablet: 768px - 1919px ── */
+@media (max-width: 1919px) {
+  [data-sidebar] {
+    display: none !important;
+  }
+
+  [data-main] {
+    width: 100%;
+  }
+
+  [data-messages-list] {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* ── Mobile: < 768px ── */
+@media (max-width: 768px) {
+  [data-content] {
+    padding: 12px 8px;
+    gap: 8px;
+  }
+
+  [data-message] {
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+}
