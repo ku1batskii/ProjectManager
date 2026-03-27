@@ -22,37 +22,6 @@ import { CSS } from "@dnd-kit/utilities";
 
 const STORAGE_KEY = "pm_tasks";
 
-
-const DESKTOP_STYLES = {
-  container: {
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr 1fr',
-    gap: '16px',
-    padding: '20px',
-    maxWidth: '100%',
-    '@media (max-width: 1024px)': {
-      gridTemplateColumns: '1fr 1fr',
-    },
-    '@media (max-width: 768px)': {
-      gridTemplateColumns: '1fr',
-    },
-  },
-  sidebar: {
-    display: 'none',
-    '@media (min-width: 1920px)': {
-      display: 'block',
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      width: '280px',
-      height: '100vh',
-      borderRight: '1px solid #2a2a3e',
-      padding: '20px',
-      overflowY: 'auto',
-    },
-  },
-};
-
 const PRIORITY_COLORS = {
   high: "#EF4444",
   medium: "#F59E0B",
