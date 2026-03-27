@@ -215,38 +215,13 @@ export default function PMAgent() {
             borderBottom: "1px solid #2a2a3e",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
             paddingLeft: "20px",
-            paddingRight: "20px",
             fontSize: "14px",
             color: "#B0BAC9",
             fontWeight: 600,
           }}
         >
-          <div>{currentChatId ? "Current chat" : "New conversation"}</div>
-          <Link
-            href="/taskboard"
-            style={{
-              padding: "8px 16px",
-              background: "#1e40af",
-              color: "#E2E8F0",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: 600,
-              textDecoration: "none",
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = "#1e3a8a";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "#1e40af";
-            }}
-          >
-            Taskboard
-          </Link>
+          {currentChatId ? "Current chat" : "New conversation"}
         </div>
 
         {/* Messages */}
