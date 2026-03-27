@@ -966,9 +966,6 @@ const filtered = useMemo(() => {
             position: "sticky",
             top: 0,
             zIndex: 20,
-            width: "100%",
-            left: 0,
-            right: 0,
           }}
         >
           <Link
