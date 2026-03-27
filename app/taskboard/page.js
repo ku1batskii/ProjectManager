@@ -1138,79 +1138,7 @@ const filtered = useMemo(() => {
                   const active = filter === role;
                   const color = ROLE_COLORS[role] || "#334155";
 
-                  return (<div style={{ display: 'flex', flexDirection: 'column', width: '100vw', minHeight: '100vh', marginLeft: 'calc(-50vw + 50%)', background: '#0C0C14' }}>
-      {/* HEADER */}
-      <div style={{
-        height: '60px',
-        borderBottom: '1px solid #1E293B',
-        background: '#0C0C14',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingLeft: '20px',
-        paddingRight: '20px',
-        width: '100%',
-        boxSizing: 'border-box',
-        position: 'sticky',
-        top: 0,
-        zIndex: 10,
-      }}>
-        <Link href="/pm-agent" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          color: '#60A5FA',
-          textDecoration: 'none',
-          fontSize: '14px',
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}>
-          ← Back
-        </Link>
-        
-        <div style={{
-          fontSize: '16px',
-          fontWeight: 600,
-          color: '#F8FAFC',
-        }}>
-          Task Tracker
-        </div>
-        
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-        }}>
-          <button onClick={() => setView('board')} style={{
-            padding: '8px 16px',
-            background: view === 'board' ? '#1e40af' : '#1a1a2e',
-            border: '1px solid #2a2a3e',
-            borderRadius: '6px',
-            color: '#E2E8F0',
-            fontSize: '13px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            transition: 'all 0.2s',
-          }}>
-            Board
-          </button>
-          <button onClick={() => setView('timeline')} style={{
-            padding: '8px 16px',
-            background: view === 'timeline' ? '#1e40af' : '#1a1a2e',
-            border: '1px solid #2a2a3e',
-            borderRadius: '6px',
-            color: '#E2E8F0',
-            fontSize: '13px',
-            cursor: 'pointer',
-            fontWeight: 600,
-            transition: 'all 0.2s',
-          }}>
-            Timeline
-          </button>
-        </div>
-      </div>
-
-      {/* CONTENT */}
-      
+                  return (
                     <button
                       key={role}
                       onClick={() => setFilter(role)}
@@ -1304,5 +1232,4 @@ const filtered = useMemo(() => {
       )}
     </div>
   );
-}    </div>
-  );
+}
