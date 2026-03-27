@@ -14,24 +14,6 @@ const PRIORITY_LABELS = {
   low: "LOW",
 };
 
-const DESKTOP_RESPONSIVE = {
-  boardContainer: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '12px',
-    '@media (min-width: 1920px)': {
-      marginLeft: '280px',
-      gridTemplateColumns: 'repeat(4, 1fr)',
-    },
-  },
-  taskCard: {
-    minWidth: '100%',
-    '@media (min-width: 1920px)': {
-      minWidth: '280px',
-    },
-  },
-};
-
 const ROLE_COLORS = {
   "Nikita": "#3B82F6",
   "Pavel": "#8B5CF6",
