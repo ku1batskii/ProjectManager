@@ -1,3 +1,4 @@
+import './globals.css';
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata = {
@@ -15,7 +16,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body style={{ margin: 0, padding: 0, background: "#0C0C14", overflow: "auto", display: "flex", flexDirection: "column" }}>
-        <ClerkProvider appearance={{
+        <div data-main><ClerkProvider appearance={{
           variables: {
             colorBackground: "#0E0E1A",
             colorText: "#E2E8F0",
@@ -41,7 +42,7 @@ export default function RootLayout({ children }) {
             footerActionLink: { color: "#3B82F6" },
           }
         }}>
-          {children}
+          {children}</div>
         </ClerkProvider>
       </body>
     </html>
